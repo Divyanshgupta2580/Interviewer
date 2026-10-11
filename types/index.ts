@@ -152,3 +152,108 @@ export interface UserDocument {
   extractedSkills?: string[];
   analysisNote: string;
 }
+
+// ---------------------------------------------------------------------------
+// LiveKit mock interview types
+// ---------------------------------------------------------------------------
+
+export type LiveKitSessionStatus =
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'active'
+  | 'disconnecting'
+  | 'disconnected'
+  | 'error';
+
+export interface LiveKitSessionResponse {
+  serverUrl: string;
+  roomName: string;
+  token: string;
+  interviewId: string;
+}
+
+export interface LiveKitSessionRequest {
+  studentId?: string;
+  targetRole: string;
+  jobId?: string;
+  resumeId?: string;
+  topics?: string[];
+  difficulty?: string;
+  durationMinutes?: number;
+  experienceLevel?: string;
+  companyType?: string;
+  targetCompany?: string;
+  customInstructions?: string;
+  focusAreas?: string[];
+}
+
+export interface LiveKitGreetingPayload {
+  message: string;
+}
+
+export interface LiveKitQuestionPayload {
+  questionId: string;
+  text: string;
+  questionNumber: number;
+  totalQuestions: number;
+}
+
+export interface LiveKitTranscriptPayload {
+  speaker: 'student' | 'interviewer';
+  text: string;
+  final: boolean;
+  timestamp: number;
+}
+
+export interface LiveKitCategoryScore {
+  category: string;
+  score: number;
+  benchmark: number;
+  strengths: string[];
+  critiques: string[];
+}
+
+export interface LiveKitSuggestedFix {
+  title: string;
+  location: string;
+  recommendedChange: string;
+}
+
+export interface LiveKitResultsPayload {
+  overallReadinessDelta: number;
+  finalScore: number;
+  summary: string;
+  categoryScores: LiveKitCategoryScore[];
+  suggestedFixes: LiveKitSuggestedFix[];
+  timestamp: number;
+}
+
+export interface LiveKitErrorPayload {
+  code: string;
+  message: string;
+}
+
+export type LiveKitEventName =
+  | 'interview:greeting'
+  | 'interview:question'
+  | 'interview:transcript'
+  | 'interview:results'
+  | 'interview:error';
+
+export interface LiveKitEvent {
+  event: LiveKitEventName;
+  payload:
+    | LiveKitGreetingPayload
+    | LiveKitQuestionPayload
+    | LiveKitTranscriptPayload
+    | LiveKitResultsPayload
+    | LiveKitErrorPayload;
+}
+
+export interface LiveKitTranscriptEntry {
+  id: string;
+  speaker: 'student' | 'interviewer';
+  text: string;
+  timestamp: number;
+}

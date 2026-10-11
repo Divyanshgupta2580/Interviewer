@@ -41,10 +41,12 @@ import { DemoLabel } from '@/components/shared/demo-label';
 import { useAuthStore } from '@/stores/auth-store';
 import { useInterviewStore } from '@/stores/interview-store';
 import { toast } from 'sonner';
-import type { InterviewType, Difficulty, ExperienceLevel, CompanyType, InterviewConfig } from '@/types';
+import type { InterviewType, Difficulty, ExperienceLevel, CompanyType, InterviewConfig, LiveKitSessionRequest } from '@/types';
 import { FREE_SESSION_LIMIT } from '@/lib/config';
 import { loadFromStorage, saveToStorage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase-client';
+import { createInterviewSession } from '@/lib/livekit-session';
+import { useLiveKitInterviewStore } from '@/stores/livekit-interview-store';
 
 const targetRoles = [
   'Software Engineer',
@@ -165,6 +167,7 @@ export default function ConfigureInterviewPage() {
   const router = useRouter();
   const { user, isDemoMode } = useAuthStore();
   const { createSession, canStartNew, getCompletedCount, getRemainingCount } = useInterviewStore();
+  const { startInterview: startLiveKitInterview, setCreating, setCreateError } = useLiveKitInterviewStore();
 
   const [step, setStep] = useState<1 | 2>(1);
   const [targetRole, setTargetRole] = useState('');
@@ -366,6 +369,39 @@ export default function ConfigureInterviewPage() {
       companyType,
     };
 
+    // Real authenticated users: start a LiveKit interview session
+    if (user && !isDemoMode) {
+      setCreating(true);
+      setCreateError(null);
+      try {
+        const sessionRequest: LiveKitSessionRequest = {
+          studentId: user.id,
+          targetRole: effectiveRole,
+          topics,
+          difficulty,
+          durationMinutes: duration,
+          experienceLevel,
+          companyType,
+          targetCompany: targetCompany.trim() || undefined,
+          customInstructions: customInstructions.trim() || undefined,
+          focusAreas: topics,
+        };
+
+        const sessionResponse = await createInterviewSession(sessionRequest);
+        startLiveKitInterview(sessionResponse.interviewId, sessionResponse.roomName, effectiveRole);
+        toast.success('Interview session created. Connecting to live interview...');
+        router.push(`/interview/session/${sessionResponse.interviewId}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to start live interview';
+        setCreateError(message);
+        toast.error(message);
+      } finally {
+        setCreating(false);
+      }
+      return;
+    }
+
+    // Demo mode: use the local browser-based interview
     const sessionId = createSession(config, user?.id || 'demo-student');
     toast.success('Interview configured. Starting now...');
     router.push(`/interview/session/${sessionId}`);
