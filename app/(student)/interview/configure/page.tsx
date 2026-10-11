@@ -388,7 +388,13 @@ export default function ConfigureInterviewPage() {
         };
 
         const sessionResponse = await createInterviewSession(sessionRequest);
-        startLiveKitInterview(sessionResponse.interviewId, sessionResponse.roomName, effectiveRole);
+        startLiveKitInterview(
+          sessionResponse.interviewId,
+          sessionResponse.roomName,
+          effectiveRole,
+          sessionResponse.serverUrl,
+          sessionResponse.token
+        );
         toast.success('Interview session created. Connecting to live interview...');
         router.push(`/interview/session/${sessionResponse.interviewId}`);
       } catch (err) {

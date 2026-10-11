@@ -33,16 +33,13 @@ import { useLiveKitInterview } from '@/hooks/use-livekit-interview';
 import { useLiveKitInterviewStore } from '@/stores/livekit-interview-store';
 import { useInterviewStore } from '@/stores/interview-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { createInterviewSession } from '@/lib/livekit-session';
 import { toast } from 'sonner';
 import type {
-  LiveKitSessionResponse,
   LiveKitQuestionPayload,
   LiveKitTranscriptPayload,
   LiveKitGreetingPayload,
   LiveKitResultsPayload,
   LiveKitErrorPayload,
-  LiveKitSessionRequest,
 } from '@/types';
 
 export default function InterviewSessionPage({ params }: { params: { id: string } }) {
@@ -86,26 +83,28 @@ export default function InterviewSessionPage({ params }: { params: { id: string 
     onError: handleError,
   });
 
-  // Connect to LiveKit room when we have a valid interview ID
+  // Connect to LiveKit room using the session data stored by the configure page
   useEffect(() => {
     if (!isLiveKitId || connectionAttempted) return;
     if (!user || isDemoMode) return;
 
+    const stored = liveKitStore.currentInterview;
+    if (!stored || !stored.serverUrl || !stored.token) {
+      setConnectionAttempted(true);
+      liveKitStore.setCreateError('Session data not found. Please configure your interview again.');
+      return;
+    }
+
     setConnectionAttempted(true);
 
-    // Re-request the session data from the backend to get fresh connection details
     (async () => {
       try {
-        const sessionRequest: LiveKitSessionRequest = {
-          studentId: user.id,
-          targetRole: liveKitStore.currentInterview?.targetRole || 'Software Engineer',
-          focusAreas: [],
-        };
-        // The interview was already created by the configure page — we just need the token
-        // For now we re-create a session. In production, you'd cache the token from the configure page.
-        const sessionData: LiveKitSessionResponse = await createInterviewSession(sessionRequest);
-        liveKitStore.startInterview(sessionData.interviewId, sessionData.roomName, sessionRequest.targetRole);
-        await livekit.connect(sessionData);
+        await livekit.connect({
+          serverUrl: stored.serverUrl,
+          roomName: stored.roomName,
+          token: stored.token,
+          interviewId: stored.interviewId,
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to connect to interview';
         liveKitStore.setCreateError(message);

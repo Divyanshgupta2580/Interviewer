@@ -9,7 +9,6 @@ import {
   type ConnectionQuality,
 } from 'livekit-client';
 
-const REMOTE_PARTICIPANT_KEY = 'interviewer';
 import type {
   LiveKitSessionStatus,
   LiveKitSessionResponse,

@@ -22,6 +22,8 @@ export interface LiveKitInterviewRecord {
   interviewId: string;
   roomName: string;
   targetRole: string;
+  serverUrl: string;
+  token: string;
   status: LiveKitInterviewStatus;
   currentQuestion: LiveKitQuestionPayload | null;
   transcripts: LiveKitTranscriptEntry[];
@@ -40,7 +42,9 @@ interface LiveKitInterviewState {
   startInterview: (
     interviewId: string,
     roomName: string,
-    targetRole: string
+    targetRole: string,
+    serverUrl: string,
+    token: string
   ) => void;
   setCreating: (creating: boolean) => void;
   setCreateError: (error: string | null) => void;
@@ -81,11 +85,19 @@ export const useLiveKitInterviewStore = create<LiveKitInterviewState>((set, get)
   setCreating: (creating: boolean) => set({ isCreating: creating }),
   setCreateError: (error: string | null) => set({ createError: error }),
 
-  startInterview: (interviewId: string, roomName: string, targetRole: string) => {
+  startInterview: (
+    interviewId: string,
+    roomName: string,
+    targetRole: string,
+    serverUrl: string,
+    token: string
+  ) => {
     const record: LiveKitInterviewRecord = {
       interviewId,
       roomName,
       targetRole,
+      serverUrl,
+      token,
       status: 'connecting',
       currentQuestion: null,
       transcripts: [],

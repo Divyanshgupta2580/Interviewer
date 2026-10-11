@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   History,
@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Brain,
   Filter,
+  Radio,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,17 +24,94 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useInterviewStore } from '@/stores/interview-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { supabase } from '@/lib/supabase-client';
 import type { InterviewType, SessionStatus } from '@/types';
 import { format } from 'date-fns';
 
+interface LiveKitHistoryEntry {
+  id: string;
+  target_role: string;
+  status: string;
+  completed_at: string | null;
+  created_at: string;
+  result: { finalScore?: number; summary?: string } | null;
+}
+
+interface CombinedHistoryEntry {
+  id: string;
+  targetRole: string;
+  type: string;
+  status: string;
+  completedAt: string | null;
+  createdAt: string;
+  difficulty: string;
+  durationMinutes: number;
+  overallScore?: number;
+  topics: string[];
+  isLiveKit: boolean;
+}
+
 export default function InterviewHistoryPage() {
   const { sessions, isHydrated } = useInterviewStore();
+  const { user, isDemoMode } = useAuthStore();
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [liveKitSessions, setLiveKitSessions] = useState<LiveKitHistoryEntry[]>([]);
+  const [liveKitLoading, setLiveKitLoading] = useState(false);
 
-  const filteredSessions = sessions
+  useEffect(() => {
+    if (!user || isDemoMode) return;
+    setLiveKitLoading(true);
+    supabase
+      .from('interview_sessions')
+      .select('id, target_role, status, completed_at, created_at, result')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        setLiveKitLoading(false);
+        if (data) setLiveKitSessions(data as LiveKitHistoryEntry[]);
+      });
+  }, [user, isDemoMode]);
+
+  // Combine demo sessions and LiveKit sessions
+  const demoEntries: CombinedHistoryEntry[] = sessions
     .filter((s) => s.status === 'completed' || s.status === 'abandoned')
-    .filter((s) => typeFilter === 'all' || s.config.type === typeFilter)
+    .map((s) => ({
+      id: s.id,
+      targetRole: s.config.targetRole,
+      type: s.config.type,
+      status: s.status,
+      completedAt: s.completedAt ?? null,
+      createdAt: s.createdAt,
+      difficulty: s.config.difficulty,
+      durationMinutes: s.config.durationMinutes,
+      overallScore: s.feedback?.overallScore,
+      topics: s.config.topics,
+      isLiveKit: false,
+    }));
+
+  const liveKitEntries: CombinedHistoryEntry[] = liveKitSessions
+    .filter((s) => s.status === 'completed' || s.status === 'abandoned')
+    .map((s) => ({
+      id: s.id,
+      targetRole: s.target_role,
+      type: 'live_audio',
+      status: s.status,
+      completedAt: s.completed_at,
+      createdAt: s.created_at,
+      difficulty: 'adaptive',
+      durationMinutes: 30,
+      overallScore: s.result?.finalScore,
+      topics: [],
+      isLiveKit: true,
+    }));
+
+  const allEntries = [...liveKitEntries, ...demoEntries];
+
+  const filteredEntries = allEntries
+    .filter((s) => typeFilter === 'all' || s.type === typeFilter)
     .filter((s) => statusFilter === 'all' || s.status === statusFilter)
     .sort((a, b) => (b.completedAt || b.createdAt).localeCompare(a.completedAt || a.createdAt));
 
@@ -49,7 +127,7 @@ export default function InterviewHistoryPage() {
       />
 
       {/* Filters */}
-      {filteredSessions.length > 0 && (
+      {filteredEntries.length > 0 && (
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Filter className="h-4 w-4" />
@@ -61,6 +139,7 @@ export default function InterviewHistoryPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="live_audio">Live Audio</SelectItem>
               <SelectItem value="technical">Technical</SelectItem>
               <SelectItem value="coding">Coding</SelectItem>
               <SelectItem value="hr">HR</SelectItem>
@@ -84,7 +163,7 @@ export default function InterviewHistoryPage() {
       )}
 
       {/* Sessions List */}
-      {filteredSessions.length === 0 ? (
+      {filteredEntries.length === 0 ? (
         <Card>
           <CardContent className="py-12">
             <EmptyState
@@ -104,56 +183,65 @@ export default function InterviewHistoryPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredSessions.map((session) => (
-            <Card key={session.id} className="transition-shadow hover:shadow-md">
+          {filteredEntries.map((entry) => (
+            <Card key={entry.id} className="transition-shadow hover:shadow-md">
               <CardContent className="flex items-center justify-between p-4">
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{session.config.targetRole}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {session.config.type.replace('_', ' ')}
-                    </Badge>
+                    <span className="text-sm font-medium">{entry.targetRole}</span>
+                    {entry.isLiveKit ? (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Radio className="h-3 w-3" />
+                        Live Audio
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        {entry.type.replace('_', ' ')}
+                      </Badge>
+                    )}
                     <Badge
                       variant="secondary"
                       className={
-                        session.status === 'completed'
+                        entry.status === 'completed'
                           ? 'bg-success/10 text-success'
                           : 'text-muted-foreground'
                       }
                     >
-                      {session.status}
+                      {entry.status}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {format(new Date(session.completedAt || session.createdAt), 'MMM d, yyyy')}
+                      {format(new Date(entry.completedAt || entry.createdAt), 'MMM d, yyyy')}
                     </span>
-                    <span>{session.config.difficulty}</span>
-                    <span>{session.config.durationMinutes} min</span>
-                    {session.feedback && (
+                    <span>{entry.difficulty}</span>
+                    <span>{entry.durationMinutes} min</span>
+                    {entry.overallScore !== undefined && (
                       <span className="flex items-center gap-1">
                         <Award className="h-3 w-3" />
-                        Score: {session.feedback.overallScore}
+                        Score: {entry.overallScore}
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {session.config.topics.slice(0, 3).map((topic) => (
-                      <Badge key={topic} variant="secondary" className="text-xs">
-                        {topic}
-                      </Badge>
-                    ))}
-                    {session.config.topics.length > 3 && (
-                      <span className="text-xs text-muted-foreground">
-                        +{session.config.topics.length - 3} more
-                      </span>
-                    )}
-                  </div>
+                  {!entry.isLiveKit && entry.topics.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {entry.topics.slice(0, 3).map((topic) => (
+                        <Badge key={topic} variant="secondary" className="text-xs">
+                          {topic}
+                        </Badge>
+                      ))}
+                      {entry.topics.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{entry.topics.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div>
-                  {session.status === 'completed' ? (
-                    <Link href={`/interview/results/${session.id}`}>
+                  {entry.status === 'completed' ? (
+                    <Link href={`/interview/results/${entry.id}`}>
                       <Button variant="outline" size="sm">
                         Review
                         <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
