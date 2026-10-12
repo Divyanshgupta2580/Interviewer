@@ -619,20 +619,28 @@ Question:"""
             return fallbacks[min(q_num - 1, len(fallbacks) - 1)]
 
     async def _finish_interview(self) -> None:
-        """Generate final results, send them, persist to DB, and leave the room."""
+        """Finalize transcript, generate scoring, persist to DB, and publish interview:results."""
+        if getattr(self, "_is_finishing", False):
+            return
+        self._is_finishing = True
+        self.finish_requested = True
         logger.info("Finishing interview: interviewId=%s", self.ctx.interview_id)
 
         try:
-            # 1. Generate results via Groq
+            # 1. Finalize transcript and generate results via Groq
             results = await self._generate_results()
             results_dict = results_to_dict(results)
 
-            # 2. Send results to frontend via data channel
-            await send_data_message(self.room, "interview:results", results_dict)
-            logger.info("Sent interview:results event (finalScore=%d)", results.final_score)
+            # 2. Persist to Supabase interview_sessions FIRST
+            persisted = await persist_results_to_supabase(self.ctx.interview_id, results_dict)
+            if not persisted:
+                logger.warning("Supabase persist attempt 1 failed, retrying...")
+                await asyncio.sleep(1)
+                persisted = await persist_results_to_supabase(self.ctx.interview_id, results_dict)
 
-            # 3. Persist to Supabase
-            await persist_results_to_supabase(self.ctx.interview_id, results_dict)
+            # 3. Publish interview:results ONLY after persistence succeeds
+            await send_data_message(self.room, "interview:results", results_dict)
+            logger.info("Sent interview:results event after DB persistence (finalScore=%d)", results.final_score)
 
         except Exception as e:
             logger.error("Failed to generate/send results: %s", e)
@@ -642,7 +650,7 @@ Question:"""
                 {"code": "RESULT_ERROR", "message": f"Failed to generate results: {e}"},
             )
 
-        # 4. Disconnect
+        # 4. Disconnect from room
         await self.room.disconnect()
         logger.info("Interview complete, room disconnected: interviewId=%s", self.ctx.interview_id)
 
@@ -668,12 +676,13 @@ Question:"""
         logger.info("Scoring LLM response received: %d chars", len(raw))
         return parse_scoring_response(raw)
 
-    def handle_finish_message(self, payload: dict[str, Any]) -> None:
+    async def handle_finish_message(self, payload: dict[str, Any]) -> None:
         """Called when the frontend sends interview:finish."""
         reason = payload.get("reason", "unknown")
         logger.info("Received interview:finish (reason=%s)", reason)
         self.finish_requested = True
         self._finish_event.set()
+        await self._finish_interview()
 
 
 # ---------------------------------------------------------------------------
@@ -693,7 +702,7 @@ def setup_data_listener(room: rtc.Room, agent: MockInterviewAgent) -> None:
             payload = parsed.get("payload", {})
 
             if event == "interview:finish":
-                agent.handle_finish_message(payload)
+                asyncio.create_task(agent.handle_finish_message(payload))
             else:
                 logger.debug("Received unknown data event: %s", event)
 
