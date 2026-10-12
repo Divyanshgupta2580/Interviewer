@@ -70,6 +70,8 @@
     "typescript": "5.2.2",
     "vaul": "^0.9.9",
     "zod": "^3.23.8",
-    "zustand": "^5.0.15"
+    "zustand": "^5.0.15",
+    "livekit-server-sdk": "^2.6.1",
+    "@livekit/components-react": "^2.6.2"
   }
 }
