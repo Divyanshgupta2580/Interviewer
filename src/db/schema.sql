@@ -135,3 +135,6 @@ SELECT DISTINCT ON (student_id)
     created_at
 FROM mock_interview_results
 ORDER BY student_id, created_at DESC;
+
+-- Force PostgREST schema cache reload
+NOTIFY pgrst, 'reload schema';

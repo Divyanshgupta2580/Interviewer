@@ -50,11 +50,21 @@ const info = (m) => console.log(`  ${Y}ℹ${R}  ${m}`);
 // ── Probe a table/view by trying to select 0 rows ────────────────────────────
 async function tableExists(name) {
   const { error } = await supabase.from(name).select('*').limit(0);
-  // If the table is missing PostgREST returns error code 42P01 or PGRST200
   if (!error) return { exists: true, columns: [] };
   const msg = error.message || '';
-  if (msg.includes('does not exist') || msg.includes('PGRST200') || error.code === '42P01') {
-    return { exists: false };
+  if (
+    msg.includes('does not exist') ||
+    msg.includes('PGRST200') ||
+    msg.includes('PGRST205') ||
+    msg.includes('schema cache') ||
+    error.code === 'PGRST205' ||
+    error.code === 'PGRST200' ||
+    error.code === '42P01'
+  ) {
+    return { exists: false, reason: 'not_found' };
+  }
+  if (msg.includes('fetch failed')) {
+    return { exists: false, reason: 'fetch_failed' };
   }
   // Any other error (RLS etc.) means the table exists but we just can't read it
   return { exists: true };
