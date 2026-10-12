@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Brain,
@@ -24,10 +25,59 @@ import { useInterviewStore } from '@/stores/interview-store';
 import { FREE_SESSION_LIMIT } from '@/lib/config';
 import { format } from 'date-fns';
 import { OnboardingTrigger } from '@/components/onboarding-trigger';
+import { supabase } from '@/lib/supabase-client';
+import type { LiveKitResultsPayload, LiveKitCategoryScore } from '@/types';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { sessions, getCompletedCount, getRemainingCount, canStartNew } = useInterviewStore();
+
+  const [liveKitSession, setLiveKitSession] = useState<{
+    id: string;
+    targetRole: string;
+    completedAt: string | null;
+    result: LiveKitResultsPayload;
+  } | null>(null);
+  const [readinessScore, setReadinessScore] = useState<{
+    total_score: number;
+    readiness_level: string;
+    top_actions: Array<{ title: string; priority: string }>;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    // Authoritative source: interview_sessions.result
+    supabase
+      .from('interview_sessions')
+      .select('id, target_role, completed_at, result')
+      .eq('user_id', user.id)
+      .eq('status', 'completed')
+      .not('result', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.result) {
+          setLiveKitSession({
+            id: data.id,
+            targetRole: data.target_role,
+            completedAt: data.completed_at,
+            result: data.result as LiveKitResultsPayload,
+          });
+        }
+      });
+
+    supabase
+      .from('readiness_scores')
+      .select('total_score, readiness_level, top_actions')
+      .eq('student_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setReadinessScore(data as any);
+        }
+      });
+  }, [user]);
 
   const completedCount = getCompletedCount();
   const remainingCount = getRemainingCount();
@@ -161,8 +211,91 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Readiness Section */}
-      {latestSession?.feedback ? (
+      {/* Readiness Section — reads authoritatively from interview_sessions.result */}
+      {liveKitSession?.result ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Interview Readiness</CardTitle>
+                <CardDescription>
+                  Based on your latest Live AI interview for {liveKitSession.targetRole}
+                  {liveKitSession.completedAt && ` · ${format(new Date(liveKitSession.completedAt), 'MMM d, yyyy')}`}
+                </CardDescription>
+              </div>
+              {readinessScore && (
+                <Badge variant="outline" className="text-xs">
+                  {readinessScore.readiness_level} ({readinessScore.total_score}/100)
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center gap-6">
+              <div className="flex flex-col items-center">
+                <div className="relative flex h-24 w-24 items-center justify-center">
+                  <svg className="h-24 w-24 -rotate-90">
+                    <circle cx="48" cy="48" r="40" stroke="hsl(var(--muted))" strokeWidth="6" fill="none" />
+                    <circle
+                      cx="48"
+                      cy="48"
+                      r="40"
+                      stroke="hsl(var(--brand))"
+                      strokeWidth="6"
+                      fill="none"
+                      strokeDasharray={`${(liveKitSession.result.finalScore / 100) * 251.2} 251.2`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span className="absolute text-2xl font-semibold">
+                    {liveKitSession.result.finalScore}
+                  </span>
+                </div>
+                <span className="mt-1 text-xs text-muted-foreground">Final Score</span>
+              </div>
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">Readiness Delta:</span>
+                  <span className={`text-xs font-semibold ${liveKitSession.result.overallReadinessDelta >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {liveKitSession.result.overallReadinessDelta >= 0 ? '+' : ''}{liveKitSession.result.overallReadinessDelta}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{liveKitSession.result.summary}</p>
+              </div>
+            </div>
+
+            {/* Category Breakdown */}
+            {liveKitSession.result.categoryScores?.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {liveKitSession.result.categoryScores.map((cs: LiveKitCategoryScore, i: number) => (
+                  <div key={i} className="rounded-md border border-border p-3 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium">{cs.category}</span>
+                      <span className={cs.score >= cs.benchmark ? 'text-success font-semibold' : 'text-warning font-semibold'}>
+                        {cs.score} / 100
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Link href={`/interview/results/${liveKitSession.id}`}>
+                <Button variant="outline" size="sm">
+                  View Full Results
+                </Button>
+              </Link>
+              <Link href="/interview/configure">
+                <Button variant="brand" size="sm">
+                  Start Another Interview
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      ) : latestSession?.feedback ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Interview Readiness</CardTitle>

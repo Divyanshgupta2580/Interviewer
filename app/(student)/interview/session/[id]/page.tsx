@@ -34,6 +34,7 @@ import { useLiveKitInterviewStore } from '@/stores/livekit-interview-store';
 import { useInterviewStore } from '@/stores/interview-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase-client';
 import type {
   LiveKitQuestionPayload,
   LiveKitTranscriptPayload,
@@ -49,6 +50,8 @@ export default function InterviewSessionPage({ params }: { params: { id: string 
   const liveKitStore = useLiveKitInterviewStore();
 
   const [connectionAttempted, setConnectionAttempted] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const finishTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   const isLiveKitId = id.startsWith('intv_');
@@ -65,12 +68,18 @@ export default function InterviewSessionPage({ params }: { params: { id: string 
       timestamp: p.timestamp,
     });
   }, [liveKitStore]);
+
   const handleResults = useCallback((p: LiveKitResultsPayload) => {
+    if (finishTimeoutRef.current) {
+      clearTimeout(finishTimeoutRef.current);
+      finishTimeoutRef.current = null;
+    }
     liveKitStore.setResults(p);
     liveKitStore.persistResults(liveKitStore.currentInterview?.interviewId || id, p).catch(() => {});
     toast.success('Interview completed! Viewing results...');
     router.push(`/interview/results/${id}`);
   }, [liveKitStore, router, id]);
+
   const handleError = useCallback((p: LiveKitErrorPayload) => {
     toast.error(p.message);
   }, []);
@@ -82,6 +91,43 @@ export default function InterviewSessionPage({ params }: { params: { id: string 
     onResults: handleResults,
     onError: handleError,
   });
+
+  const handleFinishInterview = useCallback(async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
+
+    // 1. Send interview:finish event to worker via data channel
+    livekit.sendFinishMessage();
+    toast.info('Finishing interview... Waiting for AI evaluation results.');
+
+    // 2. Set bounded timeout (15s) to wait for interview:results
+    finishTimeoutRef.current = setTimeout(async () => {
+      finishTimeoutRef.current = null;
+      // If data event did not arrive in 15s, check database directly
+      try {
+        const { data } = await supabase
+          .from('interview_sessions')
+          .select('result, status')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (data?.result) {
+          liveKitStore.setResults(data.result as LiveKitResultsPayload);
+          await livekit.disconnect();
+          toast.success('Results loaded from database!');
+          router.push(`/interview/results/${id}`);
+          return;
+        }
+      } catch (err) {
+        console.error('Database result verification error:', err);
+      }
+
+      // If not yet in DB, disconnect safely and route to results page (where polling continues)
+      await livekit.disconnect();
+      toast.info('Scoring is being finalized. Redirecting to results screen...');
+      router.push(`/interview/results/${id}`);
+    }, 15000);
+  }, [isFinishing, livekit, id, liveKitStore, router]);
 
   // Connect to LiveKit room using the session data stored by the configure page
   useEffect(() => {
@@ -127,6 +173,27 @@ export default function InterviewSessionPage({ params }: { params: { id: string 
   const status = livekit.status;
   const currentQuestion = livekit.currentQuestion || currentInterview?.currentQuestion;
   const transcripts = livekit.transcripts.length > 0 ? livekit.transcripts : currentInterview?.transcripts || [];
+
+  // Finishing state display
+  if (isFinishing) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <Card className="border-brand/30">
+          <CardContent className="flex flex-col items-center justify-center gap-4 py-16">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10">
+              <Loader2 className="h-8 w-8 text-brand animate-spin" />
+            </div>
+            <div className="text-center space-y-1">
+              <h2 className="text-lg font-semibold">Generating Your Interview Results</h2>
+              <p className="text-sm text-muted-foreground max-w-md">
+                The AI interviewer is analyzing your performance, transcript, and answers to compile your readiness score...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Connection state display
   if (status === 'connecting' || status === 'idle') {
@@ -343,13 +410,7 @@ export default function InterviewSessionPage({ params }: { params: { id: string 
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Continue Interview</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={async () => {
-                  livekit.sendFinishMessage();
-                  liveKitStore.setStatus('completed');
-                  await livekit.disconnect();
-                }}
-              >
+              <AlertDialogAction onClick={handleFinishInterview}>
                 Finish & Get Results
               </AlertDialogAction>
             </AlertDialogFooter>

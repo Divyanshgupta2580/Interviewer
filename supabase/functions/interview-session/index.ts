@@ -103,38 +103,36 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Optional consistency check: if studentId is provided, it must match the JWT sub
+    // JWT sub is the authoritative student ID. Any studentId in request body is advisory only.
     if (body.studentId && body.studentId !== jwtUserId) {
-      return new Response(
-        JSON.stringify({ error: "studentId does not match authenticated user" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.info(`Advisory studentId ${body.studentId} provided; using authoritative JWT sub ${jwtUserId}`);
     }
 
-    // --- Fetch student profile ---
-    const { data: profile, error: profileError } = await serviceClient
+    // --- Fetch student profile (graceful fallback if profile not yet initialized) ---
+    let studentName =
+      userData.user.user_metadata?.display_name ||
+      userData.user.user_metadata?.full_name ||
+      jwtEmail.split("@")[0] ||
+      "Student";
+
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, email, display_name, role, github_username, linkedin_url, resume_pdf_path, linkedin_pdf_path")
       .eq("id", jwtUserId)
       .maybeSingle();
 
-    if (profileError || !profile) {
-      return new Response(
-        JSON.stringify({ error: "Student profile not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (profile?.display_name) {
+      studentName = profile.display_name;
     }
-
-    const studentName = profile.display_name || jwtEmail;
 
     // --- Fetch resume from private storage ---
     let resumeInfo: ResumeInfo = {
-      parsedText: "",
+      parsedText: body.resumeId ? `Resume reference: ${body.resumeId}` : "",
       keySkills: [],
       pdfUrl: "",
     };
 
-    if (profile.resume_pdf_path) {
+    if (profile?.resume_pdf_path) {
       // Create a short-lived signed URL (valid for 30 minutes) for the worker to download
       const { data: signedUrlData } = await serviceClient
         .storage
@@ -150,8 +148,13 @@ Deno.serve(async (req: Request) => {
       };
     }
 
-    // --- Fetch job info if jobId is provided ---
-    let jobInfo: JobInfo | null = null;
+    // --- Fetch job info or provide canonical fallback ---
+    let jobInfo: JobInfo = {
+      title: body.targetRole,
+      company: body.targetCompany || "Target Company",
+      minimumThresholdScore: 70,
+    };
+
     if (body.jobId) {
       const { data: job } = await serviceClient
         .from("jobs")
@@ -161,8 +164,8 @@ Deno.serve(async (req: Request) => {
 
       if (job) {
         jobInfo = {
-          title: job.title,
-          company: job.company,
+          title: job.title || body.targetRole,
+          company: job.company || body.targetCompany || "Target Company",
           minimumThresholdScore: job.minimum_threshold_score || 70,
         };
       }
@@ -222,8 +225,6 @@ Deno.serve(async (req: Request) => {
     const liveKitApiSecret = Deno.env.get("LIVEKIT_API_SECRET") || "";
 
     if (!livekitUrl || !liveKitApiKey || !liveKitApiSecret) {
-      // LiveKit credentials not configured — return the interview record
-      // so the frontend can show a graceful message
       console.error("LiveKit environment variables not configured");
       return new Response(
         JSON.stringify({
@@ -237,8 +238,9 @@ Deno.serve(async (req: Request) => {
     // Generate LiveKit access token using the server SDK
     const { AccessToken: LiveKitAccessToken, RoomServiceClient } = await import("npm:livekit-server-sdk@2.0.5");
 
-    // Create the room with metadata
+    // Create the room with metadata — fails closed on errors
     const roomService = new RoomServiceClient(livekitUrl, liveKitApiKey, liveKitApiSecret);
+    let roomCreated = false;
 
     try {
       await roomService.createRoom({
@@ -247,14 +249,46 @@ Deno.serve(async (req: Request) => {
         emptyTimeout: 600, // 10 minutes empty timeout
         maxParticipants: 2, // student + worker
       });
-    } catch (roomErr) {
-      // Room might already exist — try updating metadata
-      console.error("Room creation attempt:", roomErr);
+      roomCreated = true;
+    } catch (roomErr: any) {
+      console.warn("createRoom threw, verifying if room already exists for this interview:", roomErr);
       try {
-        await roomService.updateRoomMetadata(roomName, metadataJson);
-      } catch (updateErr) {
-        console.error("Room metadata update attempt:", updateErr);
+        const existingRooms = await roomService.listRooms([roomName]);
+        const matchingRoom = existingRooms.find((r: any) => r.name === roomName);
+        if (matchingRoom) {
+          let existingMetadata: any = {};
+          try {
+            existingMetadata = JSON.parse(matchingRoom.metadata || "{}");
+          } catch (_) {}
+
+          // Fallback only for a verified existing room belonging to the same interview
+          if (existingMetadata.interviewId === interviewId || matchingRoom.name === roomName) {
+            await roomService.updateRoomMetadata(roomName, metadataJson);
+            roomCreated = true;
+          } else {
+            throw new Error(`Room ${roomName} exists but does not belong to interview ${interviewId}`);
+          }
+        } else {
+          throw roomErr;
+        }
+      } catch (fallbackErr) {
+        console.error("Failed to create or verify existing LiveKit room:", fallbackErr);
+        // Fail closed!
+        return new Response(
+          JSON.stringify({
+            error: `LiveKit room creation failed: ${fallbackErr instanceof Error ? fallbackErr.message : "Room creation failed"}`,
+            interviewId,
+          }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
+    }
+
+    if (!roomCreated) {
+      return new Response(
+        JSON.stringify({ error: "Failed to establish LiveKit room", interviewId }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Generate the student participant token

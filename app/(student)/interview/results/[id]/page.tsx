@@ -54,7 +54,7 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
   const isLiveKitId = id.startsWith('intv_');
   const session = getSession(id);
 
-  // Load LiveKit results from the store or from the database
+  // Load LiveKit results from the store or from the database (with auto-polling)
   useEffect(() => {
     if (!isLiveKitId) return;
 
@@ -68,17 +68,42 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
     // Otherwise load from the database
     if (!user) return;
     setLiveKitLoading(true);
-    supabase
-      .from('interview_sessions')
-      .select('result, target_role, completed_at')
-      .eq('id', id)
-      .maybeSingle()
-      .then(({ data }) => {
+
+    let attempts = 0;
+    const maxAttempts = 10;
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const fetchResult = async () => {
+      const { data } = await supabase
+        .from('interview_sessions')
+        .select('result, target_role, completed_at')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (data?.result) {
+        setLiveKitResults(data.result as LiveKitResultsPayload);
         setLiveKitLoading(false);
-        if (data?.result) {
-          setLiveKitResults(data.result as LiveKitResultsPayload);
+        return true;
+      }
+      return false;
+    };
+
+    fetchResult().then((found) => {
+      if (found) return;
+      // Poll every 2 seconds if result is still compiling
+      intervalId = setInterval(async () => {
+        attempts++;
+        const gotIt = await fetchResult();
+        if (gotIt || attempts >= maxAttempts) {
+          if (intervalId) clearInterval(intervalId);
+          setLiveKitLoading(false);
         }
-      });
+      }, 2000);
+    });
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [isLiveKitId, id, liveKitStore, user]);
 
   // Demo mode results
