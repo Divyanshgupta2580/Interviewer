@@ -19,6 +19,7 @@ import { OnboardingTrigger } from '@/components/onboarding-trigger';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAuthModalStore } from '@/stores/auth-modal-store';
+import { toast } from 'sonner';
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 
@@ -79,11 +80,7 @@ function HeroSection() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleStartPrep = () => {
-    if (user) {
-      router.push('/interview/configure');
-    } else {
-      openAuthModal('/interview/configure');
-    }
+    openAuthModal('/interview/configure');
   };
 
   useEffect(() => {
@@ -401,19 +398,11 @@ function CtaSection() {
   const ctaRef = useRef<HTMLDivElement>(null);
 
   const handleStartPrep = () => {
-    if (user) {
-      router.push('/interview/configure');
-    } else {
-      openAuthModal('/interview/configure');
-    }
+    openAuthModal('/interview/configure');
   };
 
   const handleSignIn = () => {
-    if (user) {
-      router.push(user.role === 'admin' ? '/admin/dashboard' : '/dashboard');
-    } else {
-      openAuthModal('/dashboard');
-    }
+    openAuthModal('/dashboard');
   };
 
   useEffect(() => {
@@ -466,23 +455,16 @@ function CtaSection() {
 export default function Home() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
   const openAuthModal = useAuthModalStore((s) => s.open);
   const navRef = useRef<HTMLElement>(null);
 
   const handleGetStarted = () => {
-    if (user) {
-      router.push('/interview/configure');
-    } else {
-      openAuthModal('/interview/configure');
-    }
+    openAuthModal('/interview/configure');
   };
 
   const handleSignIn = () => {
-    if (user) {
-      router.push(user.role === 'admin' ? '/admin/dashboard' : '/dashboard');
-    } else {
-      openAuthModal('/dashboard');
-    }
+    openAuthModal('/dashboard');
   };
 
   useEffect(() => {
@@ -511,18 +493,48 @@ export default function Home() {
             <span className="text-lg font-semibold tracking-tight">MSOT</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="border border-transparent text-muted-foreground hover:border-white hover:bg-black hover:text-white transition-all duration-200"
-              onClick={handleSignIn}
-            >
-              Sign In
-            </Button>
-            <Button variant="brand" size="sm" className="group" onClick={handleGetStarted}>
-              Get Started
-              <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </Button>
+            {user ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="border border-transparent text-muted-foreground hover:border-white hover:bg-black hover:text-white transition-all duration-200"
+                  onClick={() => router.push(user.role === 'admin' ? '/admin/dashboard' : '/dashboard')}
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-border/70 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                  onClick={async () => {
+                    await signOut();
+                    toast.success('Signed out successfully');
+                  }}
+                >
+                  Sign Out
+                </Button>
+                <Button variant="brand" size="sm" className="group" onClick={handleGetStarted}>
+                  Get Started
+                  <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="border border-transparent text-muted-foreground hover:border-white hover:bg-black hover:text-white transition-all duration-200"
+                  onClick={handleSignIn}
+                >
+                  Sign In
+                </Button>
+                <Button variant="brand" size="sm" className="group" onClick={handleGetStarted}>
+                  Get Started
+                  <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
