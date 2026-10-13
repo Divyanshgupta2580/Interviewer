@@ -7,6 +7,7 @@ import { useApplicationStore } from '@/stores/application-store';
 import { useJobStore } from '@/stores/job-store';
 import { useChatStore } from '@/stores/chat-store';
 import { OrangeCursor } from '@/components/shared/orange-cursor';
+import { LenisProvider } from '@/components/providers/lenis-provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const hydrateAuth = useAuthStore((s) => s.hydrate);
@@ -24,9 +25,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [hydrateAuth, hydrateInterview, hydrateApplications, hydrateJobs, hydrateChat]);
 
   return (
-    <>
+    <LenisProvider>
       {children}
       <OrangeCursor />
-    </>
+    </LenisProvider>
   );
 }
+

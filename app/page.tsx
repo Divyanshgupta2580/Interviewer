@@ -1,6 +1,7 @@
 'use client';
 
 import type { FC } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,12 +10,17 @@ import {
   Target,
   MessagesSquare,
   TrendingUp,
-  Clock,
   Sparkles,
   SlidersHorizontal,
+  Clock,
 } from 'lucide-react';
 import { OnboardingTrigger } from '@/components/onboarding-trigger';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import gsap from 'gsap';
+import ScrollTrigger from 'gsap/ScrollTrigger';
+import { useScrollReveal } from '@/hooks/use-gsap';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const steps: {
   icon: FC<{ className?: string }>;
@@ -57,11 +63,379 @@ const steps: {
   },
 ];
 
+function HeroSection() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const badgeRef = useRef<HTMLDivElement>(null);
+  const h1Ref = useRef<HTMLHeadingElement>(null);
+  const paraRef = useRef<HTMLParagraphElement>(null);
+  const btnsRef = useRef<HTMLDivElement>(null);
+  const noteRef = useRef<HTMLParagraphElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      tl.fromTo(badgeRef.current, { y: -12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 })
+        .fromTo(h1Ref.current, { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.75 }, '-=0.3')
+        .fromTo(paraRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.65 }, '-=0.4')
+        .fromTo(btnsRef.current, { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.35')
+        .fromTo(noteRef.current, { opacity: 0 }, { opacity: 1, duration: 0.5 }, '-=0.2')
+        .fromTo(
+          cardRef.current,
+          { x: 36, opacity: 0, scale: 0.97 },
+          { x: 0, opacity: 1, scale: 1, duration: 0.85, ease: 'power2.out' },
+          '-=0.65'
+        );
+    });
+
+    return () => ctx.revert();
+  }, []);
+
+  // Subtle floating animation for the hero card
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const float = gsap.to(el, {
+      y: -8,
+      duration: 3,
+      ease: 'sine.inOut',
+      repeat: -1,
+      yoyo: true,
+    });
+    return () => { float.kill(); };
+  }, []);
+
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-16 md:py-28" ref={heroRef}>
+      <div className="grid gap-14 md:grid-cols-2 md:items-center">
+        <div className="space-y-7">
+          {/* Animated badge */}
+          <div
+            ref={badgeRef}
+            className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/5 px-3.5 py-1.5 text-xs font-medium text-brand opacity-0"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            AI-Powered Interview Preparation
+          </div>
+
+          <h1
+            ref={h1Ref}
+            className="text-4xl font-semibold leading-[1.12] tracking-tight md:text-[3.25rem] opacity-0"
+          >
+            Your Next Interview{' '}
+            <span className="relative inline-block">
+              <span className="relative z-10">Starts Here.</span>
+              <span className="absolute inset-x-0 bottom-1 h-[0.18em] rounded-full bg-brand/25" />
+            </span>
+          </h1>
+
+          <p
+            ref={paraRef}
+            className="max-w-md text-lg text-muted-foreground leading-relaxed opacity-0"
+          >
+            Practise realistic interviews with AI, strengthen your answers, and
+            discover what to improve before the real thing.
+          </p>
+
+          <div ref={btnsRef} className="flex flex-col gap-3 sm:flex-row opacity-0">
+            <Link href="/signup">
+              <Button variant="brand" size="lg" className="group">
+                Start Interview Preparation
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-foreground/20 hover:border-foreground/60 hover:bg-foreground/5"
+              onClick={() => useOnboardingStore.getState().openManual()}
+            >
+              Explore How It Works
+            </Button>
+          </div>
+
+          <p ref={noteRef} className="text-sm text-muted-foreground opacity-0">
+            Includes 3 free interview sessions. No credit card required.
+          </p>
+        </div>
+
+        {/* Product Preview Card */}
+        <div ref={cardRef} className="relative opacity-0">
+          {/* Glow halo behind card */}
+          <div className="absolute -inset-4 rounded-3xl bg-brand/5 blur-2xl" />
+          <div className="relative rounded-2xl border border-border bg-card p-6 shadow-xl space-y-5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Mock Interview &middot; Technical
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-brand">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
+                </span>
+                Live Preview
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">
+                Question 3 of 8 &middot; React
+              </div>
+              <h3 className="text-base font-medium leading-snug">
+                Explain the difference between useMemo and useCallback. When
+                would you use each?
+              </h3>
+            </div>
+
+            <div className="rounded-xl border border-border bg-muted/40 p-4 min-h-[110px]">
+              <p className="text-sm text-muted-foreground/60 italic">
+                Type your answer here...
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                22 minutes remaining
+              </div>
+              <Button variant="brand" size="sm" className="group">
+                Submit Answer
+                <ArrowRight className="ml-1.5 h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Button>
+            </div>
+
+            {/* Progress bar */}
+            <div className="space-y-1.5">
+              <div className="flex gap-1.5">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                      i < 3 ? 'bg-brand' : 'bg-border'
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-right text-[10px] text-muted-foreground">3 / 8 completed</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StepCard({
+  icon: Icon,
+  title,
+  desc,
+  examples,
+  index,
+}: {
+  icon: FC<{ className?: string }>;
+  title: string;
+  desc: string;
+  examples?: string[];
+  index: number;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const lineRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    const line = lineRef.current;
+    if (!el || !line) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        el,
+        { y: 40, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.75,
+          delay: index * 0.1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 88%',
+            toggleActions: 'play none none none',
+          },
+        }
+      );
+
+      // top accent line expand on scroll
+      gsap.fromTo(
+        line,
+        { scaleX: 0, transformOrigin: 'left' },
+        {
+          scaleX: 1,
+          duration: 0.6,
+          delay: index * 0.1 + 0.3,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 88%',
+            toggleActions: 'play none none none',
+          },
+        }
+      );
+    });
+
+    return () => ctx.revert();
+  }, [index]);
+
+  return (
+    <div
+      ref={cardRef}
+      className="group relative flex h-full min-h-[330px] flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand/30 hover:shadow-md opacity-0"
+    >
+      {/* Top accent line */}
+      <div
+        ref={lineRef}
+        className="absolute inset-x-0 top-0 h-[2px] bg-brand"
+        style={{ transformOrigin: 'left' }}
+      />
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand/20 bg-brand/8 transition-colors duration-300 group-hover:bg-brand/15">
+          <Icon className="h-5 w-5 text-brand" />
+        </div>
+        <span className="text-3xl font-semibold tracking-tight text-muted-foreground/20 select-none">
+          0{index + 1}
+        </span>
+      </div>
+
+      <div className="mt-7 space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand">
+          Step {index + 1}
+        </p>
+        <h3 className="text-xl font-semibold leading-tight tracking-tight">{title}</h3>
+        <p className="text-sm leading-[1.7] text-muted-foreground">{desc}</p>
+      </div>
+
+      <div className="mt-auto border-t border-border pt-5">
+        {examples && examples.length > 0 ? (
+          <ul className="space-y-2">
+            {examples.map((ex) => (
+              <li key={ex} className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+                <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-brand/70" />
+                {ex}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs font-medium text-muted-foreground">
+            Practice with purpose, then use your feedback to keep improving.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HowItWorksSection() {
+  const headingRef = useScrollReveal<HTMLDivElement>({ y: 24, duration: 0.75 });
+
+  return (
+    <section id="how-it-works" className="border-t border-border bg-muted/20">
+      <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
+        <div
+          ref={headingRef}
+          className="mb-12 grid gap-5 md:grid-cols-[0.85fr_1.15fr] md:items-end md:gap-12 opacity-0"
+        >
+          <div className="space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand">
+              A clearer path forward
+            </p>
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              How It Works
+            </h2>
+          </div>
+          <p className="max-w-xl text-base leading-relaxed text-muted-foreground md:justify-self-end">
+            Four focused steps to turn your target role into a practical
+            interview preparation plan.
+          </p>
+        </div>
+
+        <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:gap-5">
+          {steps.map((step, i) => (
+            <StepCard key={i} {...step} index={i} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CtaSection() {
+  const ctaRef = useScrollReveal<HTMLDivElement>({ y: 28, duration: 0.8 });
+
+  return (
+    <section className="border-t border-border">
+      <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
+        <div
+          ref={ctaRef}
+          className="relative overflow-hidden space-y-5 rounded-2xl border border-border bg-card p-10 text-center shadow-sm md:p-16 opacity-0"
+        >
+          {/* Subtle radial glow */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--brand)/0.06),transparent_70%)]" />
+
+          <h2 className="relative text-2xl font-semibold tracking-tight md:text-3xl">
+            Ready to practise?
+          </h2>
+          <p className="relative mx-auto max-w-lg text-muted-foreground leading-relaxed">
+            Start your first mock interview in minutes. You get 3 free sessions
+            to prepare with confidence.
+          </p>
+          <div className="relative flex flex-col items-center gap-3 pt-2 sm:flex-row sm:justify-center">
+            <Link href="/signup">
+              <Button variant="brand" size="lg" className="group">
+                Start Interview Preparation
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Button>
+            </Link>
+            <Link href="/signin">
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-foreground/20 hover:border-foreground/60 hover:bg-foreground/5"
+              >
+                Sign In
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
+  // Nav scroll shrink effect
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const trigger = ScrollTrigger.create({
+      start: 'top -60',
+      onEnter: () => nav.classList.add('nav-scrolled'),
+      onLeaveBack: () => nav.classList.remove('nav-scrolled'),
+    });
+
+    return () => trigger.kill();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <header className="border-b border-border">
+      <header
+        ref={navRef}
+        className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-sm transition-all duration-300"
+      >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-brand" />
@@ -70,215 +444,26 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Link href="/signin">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="border-foreground text-foreground hover:border-foreground hover:bg-foreground hover:text-background"
+                className="text-muted-foreground hover:text-foreground"
               >
                 Sign In
               </Button>
             </Link>
             <Link href="/signup">
-              <Button variant="brand" size="sm">
+              <Button variant="brand" size="sm" className="group">
                 Get Started
-                <ArrowRight className="ml-1.5 h-4 w-4" />
+                <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Button>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 py-16 md:py-24">
-        <div className="grid gap-12 md:grid-cols-2 md:items-center">
-          <div className="space-y-6 animate-slide-up">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5 text-brand" />
-              AI-Powered Interview Preparation
-            </div>
-            <h1 className="text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
-              Your Next Interview Starts Here.
-            </h1>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              Practise realistic interviews with AI, strengthen your answers,
-              and discover what to improve before the real thing.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href="/signup">
-                <Button variant="brand" size="lg">
-                  Start Interview Preparation
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-foreground text-foreground hover:border-foreground hover:bg-foreground hover:text-background"
-                onClick={() => useOnboardingStore.getState().openManual()}
-              >
-                Explore How It Works
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Includes 3 free interview sessions. No credit card required.
-            </p>
-          </div>
-
-          {/* Product Preview */}
-          <div className="relative animate-fade-in">
-            <div className="rounded-lg border border-border bg-card p-6 shadow-lg space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Mock Interview &middot; Technical
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-brand">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                  Live Preview
-                </span>
-              </div>
-              <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">
-                  Question 3 of 8 &middot; React
-                </div>
-                <h3 className="text-base font-medium leading-snug">
-                  Explain the difference between useMemo and useCallback. When
-                  would you use each?
-                </h3>
-              </div>
-              <div className="rounded-md border border-border bg-muted/50 p-4 min-h-[120px]">
-                <p className="text-sm text-muted-foreground italic">
-                  Type your answer here...
-                </p>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5" />
-                  22 minutes remaining
-                </div>
-                <Button variant="brand" size="sm">
-                  Submit Answer
-                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <div className="flex items-center gap-1.5 pt-1">
-                <span className="h-1.5 w-6 rounded-full bg-brand" />
-                <span className="h-1.5 w-6 rounded-full bg-brand" />
-                <span className="h-1.5 w-6 rounded-full bg-brand" />
-                <span className="h-1.5 w-6 rounded-full bg-border" />
-                <span className="h-1.5 w-6 rounded-full bg-border" />
-                <span className="h-1.5 w-6 rounded-full bg-border" />
-                <span className="h-1.5 w-6 rounded-full bg-border" />
-                <span className="h-1.5 w-6 rounded-full bg-border" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="how-it-works" className="border-t border-border bg-muted/30">
-        <div className="mx-auto max-w-6xl px-6 py-16 md:py-24">
-          <div className="mb-10 grid gap-5 md:grid-cols-[0.85fr_1.15fr] md:items-end md:gap-12">
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand">
-                A clearer path forward
-              </p>
-              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                How It Works
-              </h2>
-            </div>
-            <p className="max-w-xl text-base leading-relaxed text-muted-foreground md:justify-self-end">
-              Four focused steps to turn your target role into a practical interview preparation plan.
-            </p>
-          </div>
-
-          <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:gap-5">
-            {steps.map((step, i) => {
-              const Icon = step.icon;
-              return (
-                <div
-                  key={i}
-                  className="group relative flex h-full min-h-[330px] flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-md"
-                >
-                  <div className="absolute inset-x-0 top-0 h-1 bg-brand/15 transition-colors duration-300 group-hover:bg-brand" />
-
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-brand/20 bg-brand/10">
-                      <Icon className="h-5 w-5 text-brand" />
-                    </div>
-                    <span className="text-3xl font-semibold tracking-tight text-muted-foreground/30">
-                      0{i + 1}
-                    </span>
-                  </div>
-
-                  <div className="mt-7 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-                      Step {i + 1}
-                    </p>
-                    <h3 className="text-xl font-semibold leading-tight tracking-tight">
-                      {step.title}
-                    </h3>
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {step.desc}
-                    </p>
-                  </div>
-
-                  <div className="mt-auto border-t border-border pt-5">
-                    {step.examples && step.examples.length > 0 ? (
-                      <ul className="space-y-2">
-                        {step.examples.map((ex) => (
-                          <li
-                            key={ex}
-                            className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"
-                          >
-                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                            {ex}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Practice with purpose, then use your feedback to keep improving.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-6 py-16 md:py-24">
-          <div className="space-y-4 rounded-lg border border-border bg-card p-8 text-center shadow-sm md:p-12">
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              Ready to practise?
-            </h2>
-            <p className="mx-auto max-w-lg text-muted-foreground">
-              Start your first mock interview in minutes. You get 3 free
-              sessions to prepare with confidence.
-            </p>
-            <div className="flex flex-col items-center gap-3 pt-2 sm:flex-row sm:justify-center">
-              <Link href="/signup">
-                <Button variant="brand" size="lg">
-                  Start Interview Preparation
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/signin">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-foreground text-foreground hover:border-foreground hover:bg-foreground hover:text-background"
-                >
-                  Sign In
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HeroSection />
+      <HowItWorksSection />
+      <CtaSection />
 
       {/* Footer */}
       <footer className="border-t border-border">

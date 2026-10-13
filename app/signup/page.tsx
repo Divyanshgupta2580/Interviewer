@@ -1,15 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Brain, ArrowRight, Loader2 } from 'lucide-react';
+import { Brain, ArrowRight, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/auth-store';
 import { toast } from 'sonner';
+import gsap from 'gsap';
+
+const perks = [
+  '3 free AI mock interview sessions',
+  'Personalised feedback & scoring',
+  'Application tracker & job board',
+];
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -17,6 +23,27 @@ export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Mount animation
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.signup-animate',
+        { y: 24, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.7,
+          stagger: 0.09,
+          ease: 'power3.out',
+        }
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,85 +67,122 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex flex-col items-center gap-2">
-          <Link href="/" className="flex items-center gap-2">
-            <Brain className="h-7 w-7 text-brand" />
+    <div
+      ref={containerRef}
+      className="relative flex min-h-screen items-center justify-center bg-background px-4 py-10"
+    >
+      {/* Background glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/5 blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-sm space-y-8">
+        {/* Logo */}
+        <div className="signup-animate flex flex-col items-center gap-2 opacity-0">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 border border-brand/20 transition-colors duration-200 group-hover:bg-brand/20">
+              <Brain className="h-5 w-5 text-brand" />
+            </div>
             <span className="text-xl font-semibold tracking-tight">MSOT</span>
           </Link>
-          <p className="text-sm text-muted-foreground">Create your account to start practising</p>
+          <p className="text-sm text-muted-foreground">
+            Create your account to start practising
+          </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold">Sign Up</h2>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Display Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Jane Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-              <Button type="submit" variant="brand" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
-                  </>
-                ) : (
-                  <>
-                    Create Account
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </form>
+        {/* Perks strip */}
+        <div className="signup-animate opacity-0">
+          <ul className="space-y-1.5">
+            {perks.map((p) => (
+              <li key={p} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand/15">
+                  <Check className="h-2.5 w-2.5 text-brand" />
+                </span>
+                {p}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Card */}
+        <div className="signup-animate rounded-2xl border border-border bg-card p-7 shadow-sm space-y-6 opacity-0">
+          <h2 className="text-lg font-semibold">Create account</h2>
+
+          <form onSubmit={handleSignUp} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-sm font-medium">
+                Display Name
+              </Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Jane Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isLoading}
+                className="h-10 transition-shadow duration-200 focus:shadow-[0_0_0_3px_hsl(var(--brand)/0.12)]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                className="h-10 transition-shadow duration-200 focus:shadow-[0_0_0_3px_hsl(var(--brand)/0.12)]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm font-medium">
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="At least 6 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                className="h-10 transition-shadow duration-200 focus:shadow-[0_0_0_3px_hsl(var(--brand)/0.12)]"
+              />
+            </div>
 
             {error && (
-              <p className="text-sm text-destructive text-center">{error}</p>
+              <p className="rounded-lg bg-destructive/8 border border-destructive/20 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
             )}
-          </CardContent>
-          <CardFooter className="justify-center">
-            <p className="text-xs text-muted-foreground">
-              Already have an account?{' '}
-              <Link href="/signin" className="font-medium text-brand hover:underline">
-                Sign in
-              </Link>
-            </p>
-          </CardFooter>
-        </Card>
 
-        <p className="text-center text-xs text-muted-foreground">
+            <Button type="submit" variant="brand" className="w-full group h-10" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  Create Account
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
+
+        {/* Footer links */}
+        <p className="signup-animate text-center text-sm text-muted-foreground opacity-0">
+          Already have an account?{' '}
+          <Link href="/signin" className="font-medium text-brand hover:underline underline-offset-4">
+            Sign in
+          </Link>
+        </p>
+
+        <p className="signup-animate text-center text-xs text-muted-foreground/60 opacity-0">
           Your account is secured by Supabase authentication. New accounts are created as students.
         </p>
       </div>
