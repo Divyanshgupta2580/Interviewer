@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useAuthModalStore } from '@/stores/auth-modal-store';
 
 interface Screen {
   icon: React.ElementType;
@@ -131,7 +132,8 @@ export function OnboardingModal() {
       } else if (user) {
         router.push('/interview/configure');
       } else {
-        router.push('/signup');
+        close();
+        useAuthModalStore.getState().open('/interview/configure');
       }
     } else {
       setStep((s) => s + 1);

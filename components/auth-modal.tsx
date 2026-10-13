@@ -1,0 +1,241 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useAuthStore } from '@/stores/auth-store';
+import { useAuthModalStore } from '@/stores/auth-modal-store';
+import { toast } from 'sonner';
+import { Brain, ArrowRight, GraduationCap, ShieldCheck, Loader2, Lock, UserPlus } from 'lucide-react';
+
+export function AuthModal() {
+  const router = useRouter();
+  const { isOpen, redirectUrl, close } = useAuthModalStore();
+  const { signIn, signUp, signInDemo, isLoading, error, clearError } = useAuthStore();
+
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      clearError();
+      close();
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearError();
+
+    if (!email.trim() || !password) {
+      toast.error('Please enter your email and password');
+      return;
+    }
+
+    if (mode === 'signup') {
+      if (!displayName.trim()) {
+        toast.error('Please enter your display name');
+        return;
+      }
+      await signUp(email.trim(), password, displayName.trim());
+    } else {
+      await signIn(email.trim(), password);
+    }
+
+    const state = useAuthStore.getState();
+    if (state.user) {
+      const message = mode === 'signup' ? 'Account created successfully' : 'Signed in successfully';
+      toast.success(message, { duration: 5000 });
+      close();
+      const target = state.user.role === 'admin' ? '/admin/dashboard' : (redirectUrl || '/dashboard');
+      router.push(target);
+    } else if (state.error) {
+      toast.error(state.error);
+    }
+  };
+
+  const handleDemoSignIn = (role: 'student' | 'admin') => {
+    clearError();
+    signInDemo(role);
+    toast.success(`Signed in as demo ${role}`, { duration: 5000 });
+    close();
+    const target = role === 'admin' ? '/admin/dashboard' : (redirectUrl || '/dashboard');
+    router.push(target);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[420px] p-6 gap-0 overflow-hidden rounded-2xl border-border bg-card shadow-2xl">
+        <DialogHeader className="space-y-3 text-center items-center pb-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 border border-brand/20 shadow-sm">
+            <Brain className="h-6 w-6 text-brand" />
+          </div>
+          <div>
+            <DialogTitle className="text-xl font-bold tracking-tight">
+              {mode === 'signin' ? 'Sign In Required' : 'Create an Account'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
+              Please sign in to start your AI interview preparation session and get personalized feedback.
+            </DialogDescription>
+          </div>
+        </DialogHeader>
+
+        {/* Mode Switcher Tabs */}
+        <div className="grid grid-cols-2 rounded-lg bg-muted p-1 mb-5 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => {
+              setMode('signin');
+              clearError();
+            }}
+            className={`rounded-md py-1.5 transition-all duration-200 ${
+              mode === 'signin'
+                ? 'bg-background text-foreground shadow-sm font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('signup');
+              clearError();
+            }}
+            className={`rounded-md py-1.5 transition-all duration-200 ${
+              mode === 'signup'
+                ? 'bg-background text-foreground shadow-sm font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Create Account
+          </button>
+        </div>
+
+        {/* Credentials Form */}
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {mode === 'signup' && (
+            <div className="space-y-1">
+              <Label htmlFor="modal-name" className="text-xs font-medium">
+                Full Name
+              </Label>
+              <Input
+                id="modal-name"
+                type="text"
+                placeholder="Alex Johnson"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                disabled={isLoading}
+                className="h-9 text-sm"
+              />
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Label htmlFor="modal-email" className="text-xs font-medium">
+              Email
+            </Label>
+            <Input
+              id="modal-email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
+              className="h-9 text-sm"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="modal-password" className="text-xs font-medium">
+              Password
+            </Label>
+            <Input
+              id="modal-password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+              className="h-9 text-sm"
+            />
+          </div>
+
+          {error && (
+            <p className="rounded-lg bg-destructive/10 border border-destructive/20 p-2 text-xs text-destructive">
+              {error}
+            </p>
+          )}
+
+          <Button type="submit" variant="brand" className="w-full h-10 mt-2 font-medium" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {mode === 'signup' ? 'Creating Account...' : 'Signing In...'}
+              </>
+            ) : mode === 'signup' ? (
+              <>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Create Account
+              </>
+            ) : (
+              <>
+                Sign In
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </form>
+
+        {/* Divider */}
+        <div className="relative my-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">or try demo mode</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        {/* Demo Mode Action Buttons */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleDemoSignIn('student')}
+            disabled={isLoading}
+            className="h-9 border-border/80 hover:border-brand/40 hover:bg-brand/5 transition-all text-xs"
+          >
+            <GraduationCap className="mr-1.5 h-3.5 w-3.5 text-brand" />
+            <span>Demo Student</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleDemoSignIn('admin')}
+            disabled={isLoading}
+            className="h-9 border-border/80 hover:border-brand/40 hover:bg-brand/5 transition-all text-xs"
+          >
+            <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-brand" />
+            <span>Demo Admin</span>
+          </Button>
+        </div>
+
+        <p className="mt-4 text-center text-[10px] text-muted-foreground/75">
+          <Lock className="inline-block mr-1 h-2.5 w-2.5" />
+          Authentication is strictly required before accessing AI mock interview sessions.
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
+}

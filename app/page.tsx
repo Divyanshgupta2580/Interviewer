@@ -14,8 +14,11 @@ import {
   SlidersHorizontal,
   Clock,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { OnboardingTrigger } from '@/components/onboarding-trigger';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { useAuthModalStore } from '@/stores/auth-modal-store';
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 
@@ -63,6 +66,10 @@ const steps: {
 ];
 
 function HeroSection() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const openAuthModal = useAuthModalStore((s) => s.open);
+
   const heroRef = useRef<HTMLDivElement>(null);
   const badgeRef = useRef<HTMLDivElement>(null);
   const h1Ref = useRef<HTMLHeadingElement>(null);
@@ -70,6 +77,14 @@ function HeroSection() {
   const btnsRef = useRef<HTMLDivElement>(null);
   const noteRef = useRef<HTMLParagraphElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleStartPrep = () => {
+    if (user) {
+      router.push('/interview/configure');
+    } else {
+      openAuthModal('/interview/configure');
+    }
+  };
 
   useEffect(() => {
     // Set initial hidden state imperatively via GSAP — do NOT use Tailwind opacity-0
@@ -145,12 +160,10 @@ function HeroSection() {
           </p>
 
           <div ref={btnsRef} className="flex flex-col gap-3 sm:flex-row">
-            <Link href="/signup">
-              <Button variant="brand" size="lg" className="group">
-                Start Interview Preparation
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-              </Button>
-            </Link>
+            <Button variant="brand" size="lg" className="group" onClick={handleStartPrep}>
+              Start Interview Preparation
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Button>
             <Button
               variant="outline"
               size="lg"
@@ -205,7 +218,7 @@ function HeroSection() {
                 <Clock className="h-3.5 w-3.5" />
                 22 minutes remaining
               </div>
-              <Button variant="brand" size="sm" className="group">
+              <Button variant="brand" size="sm" className="group" onClick={handleStartPrep}>
                 Submit Answer
                 <ArrowRight className="ml-1.5 h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Button>
@@ -382,7 +395,26 @@ function HowItWorksSection() {
 }
 
 function CtaSection() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const openAuthModal = useAuthModalStore((s) => s.open);
   const ctaRef = useRef<HTMLDivElement>(null);
+
+  const handleStartPrep = () => {
+    if (user) {
+      router.push('/interview/configure');
+    } else {
+      openAuthModal('/interview/configure');
+    }
+  };
+
+  const handleSignIn = () => {
+    if (user) {
+      router.push(user.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+    } else {
+      openAuthModal('/dashboard');
+    }
+  };
 
   useEffect(() => {
     const el = ctaRef.current;
@@ -412,21 +444,18 @@ function CtaSection() {
             to prepare with confidence.
           </p>
           <div className="relative flex flex-col items-center gap-3 pt-2 sm:flex-row sm:justify-center">
-            <Link href="/signup">
-              <Button variant="brand" size="lg" className="group">
-                Start Interview Preparation
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-              </Button>
-            </Link>
-            <Link href="/signin">
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-foreground/20 hover:border-white hover:bg-black hover:text-white transition-all duration-200"
-              >
-                Sign In
-              </Button>
-            </Link>
+            <Button variant="brand" size="lg" className="group" onClick={handleStartPrep}>
+              Start Interview Preparation
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-foreground/20 hover:border-white hover:bg-black hover:text-white transition-all duration-200"
+              onClick={handleSignIn}
+            >
+              Sign In
+            </Button>
           </div>
         </div>
       </div>
@@ -435,8 +464,26 @@ function CtaSection() {
 }
 
 export default function Home() {
-  // Nav scroll shrink effect
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const openAuthModal = useAuthModalStore((s) => s.open);
   const navRef = useRef<HTMLElement>(null);
+
+  const handleGetStarted = () => {
+    if (user) {
+      router.push('/interview/configure');
+    } else {
+      openAuthModal('/interview/configure');
+    }
+  };
+
+  const handleSignIn = () => {
+    if (user) {
+      router.push(user.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+    } else {
+      openAuthModal('/dashboard');
+    }
+  };
 
   useEffect(() => {
     const nav = navRef.current;
@@ -464,21 +511,18 @@ export default function Home() {
             <span className="text-lg font-semibold tracking-tight">MSOT</span>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/signin">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="border border-transparent text-muted-foreground hover:border-white hover:bg-black hover:text-white transition-all duration-200"
-              >
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button variant="brand" size="sm" className="group">
-                Get Started
-                <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-              </Button>
-            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="border border-transparent text-muted-foreground hover:border-white hover:bg-black hover:text-white transition-all duration-200"
+              onClick={handleSignIn}
+            >
+              Sign In
+            </Button>
+            <Button variant="brand" size="sm" className="group" onClick={handleGetStarted}>
+              Get Started
+              <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Button>
           </div>
         </div>
       </header>
