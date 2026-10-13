@@ -1,3 +1,3 @@
-# Interviewer
+# MSOT — AI-Powered Interview Preparation
 
-[![Open in Bolt](https://bolt.new/static/open-in-bolt.svg)](https://bolt.new/~/sb1-hpqhmyw2)
+A full-stack AI interview preparation platform designed to help candidates prepare for technical and behavioral interviews with tailored practice, realistic mock sessions, and actionable feedback.

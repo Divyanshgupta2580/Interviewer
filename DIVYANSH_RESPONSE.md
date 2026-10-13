@@ -765,7 +765,7 @@ The Edge Function is already deployed via the Supabase MCP tool. To verify:
 
 ### Answer
 
-This project does not use git (it is not a git repository — see the environment info: "Is directory a git repo: No"). The code is managed through the Bolt development environment.
+This project uses git for version control and development.
 
 ### What to share with Divyansh
 
