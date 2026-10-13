@@ -74,16 +74,31 @@ export async function middleware(request: NextRequest) {
 
   const isAuthenticated = !!session?.access_token;
 
+  // ── Demo mode: honour the lightweight cookie set by signInDemo ────────────
+  const demoSession = request.cookies.get('demo-session')?.value;
+  const isDemoAuthenticated = demoSession === 'student' || demoSession === 'admin';
+
+  // Redirect demo users away from auth pages
+  if (isAuthPage && isDemoAuthenticated) {
+    const dest = demoSession === 'admin' ? '/admin/dashboard' : '/dashboard';
+    return NextResponse.redirect(new URL(dest, request.url));
+  }
+
   // ── Redirect already-logged-in users away from auth pages ────────────────
   if (isAuthPage && isAuthenticated) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // ── Redirect unauthenticated users to sign in ─────────────────────────────
-  if ((isStudentPath || isAdminPath) && !isAuthenticated) {
+  if ((isStudentPath || isAdminPath) && !isAuthenticated && !isDemoAuthenticated) {
     const signInUrl = new URL('/signin', request.url);
     signInUrl.searchParams.set('redirectTo', pathname);
     return NextResponse.redirect(signInUrl);
+  }
+
+  // Admin path: demo admin is allowed through (role enforced client-side)
+  if (isAdminPath && isDemoAuthenticated && demoSession !== 'admin') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // ── Admin path: verify role via DB lookup ─────────────────────────────────

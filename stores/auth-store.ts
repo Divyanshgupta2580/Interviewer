@@ -72,6 +72,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const user = role === 'admin' ? demoAdmin : demoStudent;
     saveToStorage('auth-user', user);
     saveToStorage(DEMO_FLAG_KEY, true);
+    // Write a lightweight cookie that middleware can read (localStorage is not visible to Edge functions)
+    if (typeof document !== 'undefined') {
+      document.cookie = `demo-session=${role}; path=/; SameSite=Lax`;
+    }
     set({ user, isDemoMode: true });
   },
 
@@ -106,6 +110,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (isDemo) {
       removeFromStorage('auth-user');
       removeFromStorage(DEMO_FLAG_KEY);
+      // Clear the demo cookie so middleware stops letting demo users through
+      if (typeof document !== 'undefined') {
+        document.cookie = 'demo-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      }
       set({ user: null, isDemoMode: false });
       return;
     }

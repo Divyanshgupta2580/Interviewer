@@ -18,7 +18,6 @@ import { OnboardingTrigger } from '@/components/onboarding-trigger';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
-import { useScrollReveal } from '@/hooks/use-gsap';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -73,6 +72,13 @@ function HeroSection() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Set initial hidden state imperatively via GSAP — do NOT use Tailwind opacity-0
+    // because it persists after hydration and fights with GSAP's inline styles
+    gsap.set(
+      [badgeRef.current, h1Ref.current, paraRef.current, btnsRef.current, noteRef.current, cardRef.current],
+      { opacity: 0 }
+    );
+
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
@@ -110,10 +116,10 @@ function HeroSection() {
     <section className="mx-auto max-w-6xl px-6 py-16 md:py-28" ref={heroRef}>
       <div className="grid gap-14 md:grid-cols-2 md:items-center">
         <div className="space-y-7">
-          {/* Animated badge */}
+          {/* Animated badge — no opacity-0 class, GSAP sets it */}
           <div
             ref={badgeRef}
-            className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/5 px-3.5 py-1.5 text-xs font-medium text-brand opacity-0"
+            className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/5 px-3.5 py-1.5 text-xs font-medium text-brand"
           >
             <Sparkles className="h-3.5 w-3.5" />
             AI-Powered Interview Preparation
@@ -121,7 +127,7 @@ function HeroSection() {
 
           <h1
             ref={h1Ref}
-            className="text-4xl font-semibold leading-[1.12] tracking-tight md:text-[3.25rem] opacity-0"
+            className="text-4xl font-semibold leading-[1.12] tracking-tight md:text-[3.25rem]"
           >
             Your Next Interview{' '}
             <span className="relative inline-block">
@@ -132,13 +138,13 @@ function HeroSection() {
 
           <p
             ref={paraRef}
-            className="max-w-md text-lg text-muted-foreground leading-relaxed opacity-0"
+            className="max-w-md text-lg text-muted-foreground leading-relaxed"
           >
             Practise realistic interviews with AI, strengthen your answers, and
             discover what to improve before the real thing.
           </p>
 
-          <div ref={btnsRef} className="flex flex-col gap-3 sm:flex-row opacity-0">
+          <div ref={btnsRef} className="flex flex-col gap-3 sm:flex-row">
             <Link href="/signup">
               <Button variant="brand" size="lg" className="group">
                 Start Interview Preparation
@@ -155,13 +161,13 @@ function HeroSection() {
             </Button>
           </div>
 
-          <p ref={noteRef} className="text-sm text-muted-foreground opacity-0">
+          <p ref={noteRef} className="text-sm text-muted-foreground">
             Includes 3 free interview sessions. No credit card required.
           </p>
         </div>
 
-        {/* Product Preview Card */}
-        <div ref={cardRef} className="relative opacity-0">
+        {/* Product Preview Card — no opacity-0 class */}
+        <div ref={cardRef} className="relative">
           {/* Glow halo behind card */}
           <div className="absolute -inset-4 rounded-3xl bg-brand/5 blur-2xl" />
           <div className="relative rounded-2xl border border-border bg-card p-6 shadow-xl space-y-5">
@@ -226,6 +232,7 @@ function HeroSection() {
   );
 }
 
+
 function StepCard({
   icon: Icon,
   title,
@@ -247,40 +254,35 @@ function StepCard({
     const line = lineRef.current;
     if (!el || !line) return;
 
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        el,
-        { y: 40, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.75,
-          delay: index * 0.1,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: el,
-            start: 'top 88%',
-            toggleActions: 'play none none none',
-          },
-        }
-      );
+    // Set initial state via GSAP — no Tailwind opacity-0 needed
+    gsap.set(el, { opacity: 0, y: 40 });
+    gsap.set(line, { scaleX: 0, transformOrigin: 'left' });
 
-      // top accent line expand on scroll
-      gsap.fromTo(
-        line,
-        { scaleX: 0, transformOrigin: 'left' },
-        {
-          scaleX: 1,
-          duration: 0.6,
-          delay: index * 0.1 + 0.3,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: el,
-            start: 'top 88%',
-            toggleActions: 'play none none none',
-          },
-        }
-      );
+    const ctx = gsap.context(() => {
+      gsap.to(el, {
+        y: 0,
+        opacity: 1,
+        duration: 0.75,
+        delay: index * 0.1,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: el,
+          start: 'top 88%',
+          toggleActions: 'play none none none',
+        },
+      });
+
+      gsap.to(line, {
+        scaleX: 1,
+        duration: 0.6,
+        delay: index * 0.1 + 0.3,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: el,
+          start: 'top 88%',
+          toggleActions: 'play none none none',
+        },
+      });
     });
 
     return () => ctx.revert();
@@ -289,7 +291,7 @@ function StepCard({
   return (
     <div
       ref={cardRef}
-      className="group relative flex h-full min-h-[330px] flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand/30 hover:shadow-md opacity-0"
+      className="group relative flex h-full min-h-[330px] flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand/30 hover:shadow-md"
     >
       {/* Top accent line */}
       <div
@@ -336,14 +338,24 @@ function StepCard({
 }
 
 function HowItWorksSection() {
-  const headingRef = useScrollReveal<HTMLDivElement>({ y: 24, duration: 0.75 });
+  const headingRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = headingRef.current;
+    if (!el) return;
+    gsap.set(el, { opacity: 0, y: 24 });
+    gsap.to(el, {
+      opacity: 1, y: 0, duration: 0.75, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 88%', toggleActions: 'play none none none' },
+    });
+  }, []);
 
   return (
     <section id="how-it-works" className="border-t border-border bg-muted/20">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
         <div
           ref={headingRef}
-          className="mb-12 grid gap-5 md:grid-cols-[0.85fr_1.15fr] md:items-end md:gap-12 opacity-0"
+          className="mb-12 grid gap-5 md:grid-cols-[0.85fr_1.15fr] md:items-end md:gap-12"
         >
           <div className="space-y-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand">
@@ -370,14 +382,24 @@ function HowItWorksSection() {
 }
 
 function CtaSection() {
-  const ctaRef = useScrollReveal<HTMLDivElement>({ y: 28, duration: 0.8 });
+  const ctaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el) return;
+    gsap.set(el, { opacity: 0, y: 28 });
+    gsap.to(el, {
+      opacity: 1, y: 0, duration: 0.8, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 88%', toggleActions: 'play none none none' },
+    });
+  }, []);
 
   return (
     <section className="border-t border-border">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
         <div
           ref={ctaRef}
-          className="relative overflow-hidden space-y-5 rounded-2xl border border-border bg-card p-10 text-center shadow-sm md:p-16 opacity-0"
+          className="relative overflow-hidden space-y-5 rounded-2xl border border-border bg-card p-10 text-center shadow-sm md:p-16"
         >
           {/* Subtle radial glow */}
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--brand)/0.06),transparent_70%)]" />

@@ -22,17 +22,15 @@ export default function SignInPage() {
   // Mount animation
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        '.signin-animate',
-        { y: 24, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.7,
-          stagger: 0.09,
-          ease: 'power3.out',
-        }
-      );
+      // Set initial hidden state via GSAP (not Tailwind opacity-0)
+      gsap.set('.signin-animate', { opacity: 0, y: 24 });
+      gsap.to('.signin-animate', {
+        y: 0,
+        opacity: 1,
+        duration: 0.7,
+        stagger: 0.09,
+        ease: 'power3.out',
+      });
     }, containerRef);
 
     return () => ctx.revert();
@@ -73,7 +71,7 @@ export default function SignInPage() {
 
       <div className="relative w-full max-w-sm space-y-8">
         {/* Logo */}
-        <div className="signin-animate flex flex-col items-center gap-2 opacity-0">
+        <div className="signin-animate flex flex-col items-center gap-2">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 border border-brand/20 transition-colors duration-200 group-hover:bg-brand/20">
               <Brain className="h-5 w-5 text-brand" />
@@ -86,7 +84,7 @@ export default function SignInPage() {
         </div>
 
         {/* Card */}
-        <div className="signin-animate rounded-2xl border border-border bg-card p-7 shadow-sm space-y-6 opacity-0">
+        <div className="signin-animate rounded-2xl border border-border bg-card p-7 shadow-sm space-y-6">
           <h2 className="text-lg font-semibold">Welcome back</h2>
 
           <form onSubmit={handleSignIn} className="space-y-4">
@@ -171,14 +169,14 @@ export default function SignInPage() {
         </div>
 
         {/* Footer link */}
-        <p className="signin-animate text-center text-sm text-muted-foreground opacity-0">
+        <p className="signin-animate text-center text-sm text-muted-foreground">
           No account?{' '}
           <Link href="/signup" className="font-medium text-brand hover:underline underline-offset-4">
             Create one free
           </Link>
         </p>
 
-        <p className="signin-animate text-center text-xs text-muted-foreground/60 opacity-0">
+        <p className="signin-animate text-center text-xs text-muted-foreground/60">
           Demo accounts use sample data stored in your browser. Real accounts use secure Supabase authentication.
         </p>
       </div>

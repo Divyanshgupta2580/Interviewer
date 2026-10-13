@@ -29,17 +29,15 @@ export default function SignUpPage() {
   // Mount animation
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        '.signup-animate',
-        { y: 24, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.7,
-          stagger: 0.09,
-          ease: 'power3.out',
-        }
-      );
+      // Set initial hidden state via GSAP (not Tailwind opacity-0)
+      gsap.set('.signup-animate', { opacity: 0, y: 24 });
+      gsap.to('.signup-animate', {
+        y: 0,
+        opacity: 1,
+        duration: 0.7,
+        stagger: 0.09,
+        ease: 'power3.out',
+      });
     }, containerRef);
 
     return () => ctx.revert();
@@ -78,7 +76,7 @@ export default function SignUpPage() {
 
       <div className="relative w-full max-w-sm space-y-8">
         {/* Logo */}
-        <div className="signup-animate flex flex-col items-center gap-2 opacity-0">
+        <div className="signup-animate flex flex-col items-center gap-2">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 border border-brand/20 transition-colors duration-200 group-hover:bg-brand/20">
               <Brain className="h-5 w-5 text-brand" />
@@ -91,7 +89,7 @@ export default function SignUpPage() {
         </div>
 
         {/* Perks strip */}
-        <div className="signup-animate opacity-0">
+        <div className="signup-animate">
           <ul className="space-y-1.5">
             {perks.map((p) => (
               <li key={p} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -105,7 +103,7 @@ export default function SignUpPage() {
         </div>
 
         {/* Card */}
-        <div className="signup-animate rounded-2xl border border-border bg-card p-7 shadow-sm space-y-6 opacity-0">
+        <div className="signup-animate rounded-2xl border border-border bg-card p-7 shadow-sm space-y-6">
           <h2 className="text-lg font-semibold">Create account</h2>
 
           <form onSubmit={handleSignUp} className="space-y-4">
@@ -175,14 +173,14 @@ export default function SignUpPage() {
         </div>
 
         {/* Footer links */}
-        <p className="signup-animate text-center text-sm text-muted-foreground opacity-0">
+        <p className="signup-animate text-center text-sm text-muted-foreground">
           Already have an account?{' '}
           <Link href="/signin" className="font-medium text-brand hover:underline underline-offset-4">
             Sign in
           </Link>
         </p>
 
-        <p className="signup-animate text-center text-xs text-muted-foreground/60 opacity-0">
+        <p className="signup-animate text-center text-xs text-muted-foreground/60">
           Your account is secured by Supabase authentication. New accounts are created as students.
         </p>
       </div>
