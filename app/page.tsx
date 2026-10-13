@@ -154,7 +154,7 @@ function HeroSection() {
             <Button
               variant="outline"
               size="lg"
-              className="border-foreground/20 hover:border-foreground/60 hover:bg-foreground/5"
+              className="border-foreground/20 hover:border-white hover:bg-black hover:text-white transition-all duration-200"
               onClick={() => useOnboardingStore.getState().openManual()}
             >
               Explore How It Works
@@ -422,7 +422,7 @@ function CtaSection() {
               <Button
                 variant="outline"
                 size="lg"
-                className="border-foreground/20 hover:border-foreground/60 hover:bg-foreground/5"
+                className="border-foreground/20 hover:border-white hover:bg-black hover:text-white transition-all duration-200"
               >
                 Sign In
               </Button>
@@ -468,7 +468,7 @@ export default function Home() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground hover:text-foreground"
+                className="border border-transparent text-muted-foreground hover:border-white hover:bg-black hover:text-white transition-all duration-200"
               >
                 Sign In
               </Button>
