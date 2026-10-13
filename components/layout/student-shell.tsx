@@ -12,6 +12,7 @@ import {
   FileText,
   LogOut,
   Menu,
+  ChevronLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, signOut } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const initials = user?.displayName
     ?.split(' ')
@@ -52,40 +54,47 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
       return pathname === '/dashboard';
     }
     if (item.href === '/interview/configure') {
-      // Highlight AI Interview for /interview/configure, /interview/session/*, and /interview/results/*
-      // but NOT /interview/history which has its own navigation item
       return pathname.startsWith('/interview') && !pathname.startsWith('/interview/history');
     }
     return pathname === item.href || pathname.startsWith(item.href + '/');
   };
 
-  const AccountFooter = ({ onNavigate }: { onNavigate?: () => void }) => (
-    <div className="border-t border-border p-4">
-      <div className="mb-3 flex items-center gap-2 px-1" title={user?.displayName || 'Student'}>
+  const AccountFooter = ({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) => (
+    <div className={cn('border-t border-border', collapsed ? 'p-2' : 'p-4')}>
+      <div
+        className={cn('mb-3 flex items-center gap-2', collapsed ? 'justify-center' : 'px-1')}
+        title={user?.displayName || 'Student'}
+      >
         <Avatar className="h-8 w-8 shrink-0">
           <AvatarFallback className="bg-muted text-xs font-medium">{initials}</AvatarFallback>
         </Avatar>
-        <span className="min-w-0 truncate text-sm font-medium text-foreground">
-          {user?.displayName || 'Student'}
-        </span>
+        {!collapsed && (
+          <span className="min-w-0 truncate text-sm font-medium text-foreground">
+            {user?.displayName || 'Student'}
+          </span>
+        )}
       </div>
       <Button
         variant="outline"
-        size="default"
-        className="group w-full justify-start border-border text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+        size={collapsed ? 'icon' : 'default'}
+        className={cn(
+          'group border-border text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors',
+          collapsed ? 'h-9 w-9 mx-auto flex' : 'w-full justify-start'
+        )}
         onClick={async () => {
           onNavigate?.();
           await handleSignOut();
         }}
         aria-label="Sign Out"
+        title="Sign Out"
       >
-        <LogOut className="mr-2 h-4 w-4 shrink-0 text-muted-foreground group-hover:text-destructive transition-colors" />
-        Sign Out
+        <LogOut className={cn('h-4 w-4 shrink-0 text-muted-foreground group-hover:text-destructive transition-colors', !collapsed && 'mr-2')} />
+        {!collapsed && 'Sign Out'}
       </Button>
     </div>
   );
 
-  const NavLinks = ({ onNavigate }: { onNavigate?: () => void }) => (
+  const NavLinks = ({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) => (
     <nav className="space-y-1">
       {navItems.map((item) => {
         const isActive = isItemActive(item);
@@ -95,17 +104,24 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
             key={item.href}
             href={item.href}
             onClick={onNavigate}
+            title={collapsed ? item.label : undefined}
             className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              'relative flex items-center rounded-md text-sm font-medium transition-colors',
+              collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2',
               isActive
                 ? 'bg-muted text-foreground'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
-            <span className="flex-1">{item.label}</span>
+            {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
             {item.emphasized && (
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+              <span
+                className={cn(
+                  'rounded-full bg-brand shrink-0',
+                  collapsed ? 'absolute top-1.5 right-1.5 h-1.5 w-1.5' : 'h-1.5 w-1.5'
+                )}
+              />
             )}
           </Link>
         );
@@ -116,23 +132,53 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop Fixed Sidebar: stays stationary when the user scrolls */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border bg-card md:flex">
-        <Link
-          href="/dashboard"
-          className="flex h-16 shrink-0 items-center gap-2 border-b border-border px-6 transition-colors hover:bg-muted/40"
-          title="MSOT Dashboard"
-        >
-          <Brain className="h-6 w-6 shrink-0 text-brand" />
-          <span className="text-base font-semibold tracking-tight text-foreground">MSOT</span>
-        </Link>
-        <div className="flex-1 overflow-y-auto p-4">
-          <NavLinks />
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-border bg-card transition-[width] duration-300 ease-in-out md:flex',
+          sidebarCollapsed ? 'w-[72px]' : 'w-60'
+        )}
+      >
+        <div className="flex h-16 shrink-0 items-center border-b border-border px-3">
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((prev) => !prev)}
+            className={cn(
+              'group flex w-full items-center rounded-xl p-2 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              sidebarCollapsed ? 'justify-center' : 'justify-between'
+            )}
+            aria-label={sidebarCollapsed ? 'Expand navigation bar' : 'Close navigation bar'}
+            title={sidebarCollapsed ? 'Expand navigation bar' : 'Close navigation bar'}
+          >
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 border border-brand/20 transition-colors group-hover:bg-brand/20">
+                <Brain className="h-4.5 w-4.5 text-brand" />
+              </div>
+              {!sidebarCollapsed && (
+                <span className="text-base font-semibold tracking-tight text-foreground whitespace-nowrap">
+                  MSOT
+                </span>
+              )}
+            </div>
+            {!sidebarCollapsed && (
+              <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted">
+                <ChevronLeft className="h-4 w-4" />
+              </span>
+            )}
+          </button>
         </div>
-        <AccountFooter />
+        <div className="flex-1 overflow-y-auto p-3">
+          <NavLinks collapsed={sidebarCollapsed} />
+        </div>
+        <AccountFooter collapsed={sidebarCollapsed} />
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:pl-60">
+      <div
+        className={cn(
+          'flex min-h-screen min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-in-out',
+          sidebarCollapsed ? 'md:pl-[72px]' : 'md:pl-60'
+        )}
+      >
         {/* Mobile Header: sticky top so it never scrolls away */}
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-card px-4 md:hidden">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>

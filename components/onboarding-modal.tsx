@@ -329,11 +329,12 @@ export function OnboardingModal() {
                 Back
               </Button>
             )}
-            {!isLast ? (
+            {step === 0 && (
               <Button variant="ghost" size="sm" onClick={handleSkip}>
                 Skip Tour
               </Button>
-            ) : user ? (
+            )}
+            {isLast && user && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -345,7 +346,7 @@ export function OnboardingModal() {
               >
                 Explore the Dashboard
               </Button>
-            ) : null}
+            )}
           </div>
           <Button variant="brand" size="sm" onClick={handleNext}>
             {isLast ? (

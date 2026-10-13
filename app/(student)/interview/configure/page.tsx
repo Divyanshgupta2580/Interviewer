@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Brain,
@@ -20,7 +20,10 @@ import {
   Linkedin,
   FileText,
   Upload,
+  ChevronDown,
+  Sparkles,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -173,6 +176,29 @@ export default function ConfigureInterviewPage() {
   const [targetRole, setTargetRole] = useState('');
   const [customRole, setCustomRole] = useState('');
   const [targetCompany, setTargetCompany] = useState('');
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
+  const companyDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        companyDropdownRef.current &&
+        !companyDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsCompanyDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const filteredCompanySuggestions = useMemo(() => {
+    if (!targetCompany.trim()) return companySuggestions;
+    const query = targetCompany.toLowerCase().trim();
+    return companySuggestions.filter((c) => c.toLowerCase().includes(query));
+  }, [targetCompany]);
   const [companyType, setCompanyType] = useState<CompanyType>('other');
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('entry_level');
   const [topics, setTopics] = useState<string[]>([]);
@@ -495,25 +521,130 @@ export default function ConfigureInterviewPage() {
             </div>
 
             {/* Target Company */}
-            <div className="space-y-2">
-              <Label htmlFor="company">
-                Target Company <span className="text-xs font-normal text-muted-foreground">(optional)</span>
-              </Label>
+            <div className="space-y-2" ref={companyDropdownRef}>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="company" className="text-sm font-medium">
+                  Target Company <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                {targetCompany && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTargetCompany('');
+                      setIsCompanyDropdownOpen(false);
+                    }}
+                    className="text-xs text-muted-foreground hover:text-brand transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
               <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Building2 className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <Input
                   id="company"
                   placeholder="e.g. Google, Stripe, or type any company"
                   value={targetCompany}
-                  onChange={(e) => setTargetCompany(e.target.value)}
-                  className="pl-9"
-                  list="company-suggestions"
+                  onChange={(e) => {
+                    setTargetCompany(e.target.value);
+                    if (!isCompanyDropdownOpen) setIsCompanyDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsCompanyDropdownOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setIsCompanyDropdownOpen(false);
+                    } else if (e.key === 'Enter' && isCompanyDropdownOpen) {
+                      e.preventDefault();
+                      if (filteredCompanySuggestions.length > 0) {
+                        setTargetCompany(filteredCompanySuggestions[0]);
+                        setIsCompanyDropdownOpen(false);
+                      }
+                    }
+                  }}
+                  className="h-11 pl-10 pr-10 text-sm bg-card border-border rounded-xl transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
                 />
-                <datalist id="company-suggestions">
-                  {companySuggestions.map((c) => (
-                    <option key={c} value={c} />
-                  ))}
-                </datalist>
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setIsCompanyDropdownOpen((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md"
+                  aria-label="Toggle company suggestions"
+                >
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 transition-transform duration-200',
+                      isCompanyDropdownOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+
+                {/* Stylish Dropdown Menu */}
+                {isCompanyDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-border bg-card/95 backdrop-blur-md shadow-2xl p-2 space-y-1 max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-150">
+                    <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between border-b border-border/50 pb-1.5 mb-1">
+                      <span>Top Tech Companies</span>
+                      <span className="text-[10px] text-muted-foreground/70 font-normal">Click or type custom</span>
+                    </div>
+
+                    {filteredCompanySuggestions.length > 0 ? (
+                      filteredCompanySuggestions.map((company) => {
+                        const isSelected = targetCompany.toLowerCase().trim() === company.toLowerCase();
+                        return (
+                          <button
+                            type="button"
+                            key={company}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setTargetCompany(company);
+                              setIsCompanyDropdownOpen(false);
+                            }}
+                            className={cn(
+                              'group flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-all',
+                              isSelected
+                                ? 'bg-brand text-white font-medium shadow-sm'
+                                : 'text-foreground hover:bg-muted/80 hover:text-foreground'
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className={cn(
+                                  'flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-semibold shrink-0 transition-colors',
+                                  isSelected
+                                    ? 'bg-white/20 border-white/30 text-white'
+                                    : 'bg-muted border-border text-muted-foreground group-hover:border-brand/40 group-hover:text-brand'
+                                )}
+                              >
+                                {company[0]}
+                              </div>
+                              <span className="truncate">{company}</span>
+                            </div>
+                            {isSelected && <Check className="h-4 w-4 text-white shrink-0" />}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="p-3 text-center text-xs text-muted-foreground space-y-1">
+                        <p>No matching preset company.</p>
+                      </div>
+                    )}
+
+                    {targetCompany.trim() && !companySuggestions.some((c) => c.toLowerCase() === targetCompany.toLowerCase().trim()) && (
+                      <div
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setIsCompanyDropdownOpen(false);
+                        }}
+                        className="cursor-pointer flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-muted-foreground bg-muted/50 border border-dashed border-border hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-brand shrink-0" />
+                        <span className="truncate">
+                          Using custom company: <strong className="text-foreground">{targetCompany.trim()}</strong>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 You can continue without a company. Company context helps tailor topic recommendations.
