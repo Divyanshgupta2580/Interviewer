@@ -53,14 +53,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <Button
         variant="outline"
         size="default"
-        className="w-full justify-start text-foreground hover:bg-muted"
+        className="group w-full justify-start border-border text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
         onClick={async () => {
           onNavigate?.();
           await handleSignOut();
         }}
         aria-label="Sign Out"
       >
-        <LogOut className="mr-2 h-4 w-4 shrink-0" />
+        <LogOut className="mr-2 h-4 w-4 shrink-0 text-muted-foreground group-hover:text-destructive transition-colors" />
         Sign Out
       </Button>
     </div>

@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAuthModalStore } from '@/stores/auth-modal-store';
 import { toast } from 'sonner';
-import { Brain, ArrowRight, GraduationCap, ShieldCheck, Loader2, Lock, UserPlus, LogOut } from 'lucide-react';
+import { Brain, ArrowRight, GraduationCap, ShieldCheck, Loader2, Lock, UserPlus, LogOut, Eye, EyeOff } from 'lucide-react';
 
 export function AuthModal() {
   const router = useRouter();
@@ -26,10 +26,12 @@ export function AuthModal() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       clearError();
+      setShowPassword(false);
       close();
     }
   };
@@ -134,10 +136,10 @@ export function AuthModal() {
             <Button
               type="button"
               variant="outline"
-              className="w-full h-9 border-border/70 text-xs hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+              className="group w-full h-9 border-border text-foreground text-xs hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
               onClick={handleSignOutAndReset}
             >
-              <LogOut className="mr-2 h-3.5 w-3.5" />
+              <LogOut className="mr-2 h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
               Sign Out / Switch Account
             </Button>
           </div>
@@ -214,15 +216,30 @@ export function AuthModal() {
                 <Label htmlFor="modal-password" className="text-xs font-medium">
                   Password
                 </Label>
-                <Input
-                  id="modal-password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                  className="h-9 text-sm"
-                />
+                <div className="relative">
+                  <Input
+                    id="modal-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                    className="h-9 text-sm pr-9"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {error && (
@@ -266,9 +283,9 @@ export function AuthModal() {
                 size="sm"
                 onClick={() => handleDemoSignIn('student')}
                 disabled={isLoading}
-                className="h-9 border-border/80 hover:border-brand/40 hover:bg-brand/5 transition-all text-xs"
+                className="group h-9 border-border text-foreground hover:border-brand hover:bg-brand hover:text-white transition-all text-xs font-medium"
               >
-                <GraduationCap className="mr-1.5 h-3.5 w-3.5 text-brand" />
+                <GraduationCap className="mr-1.5 h-3.5 w-3.5 text-brand group-hover:text-white transition-colors" />
                 <span>Student</span>
               </Button>
               <Button
@@ -277,9 +294,9 @@ export function AuthModal() {
                 size="sm"
                 onClick={() => handleDemoSignIn('admin')}
                 disabled={isLoading}
-                className="h-9 border-border/80 hover:border-brand/40 hover:bg-brand/5 transition-all text-xs"
+                className="group h-9 border-border text-foreground hover:border-brand hover:bg-brand hover:text-white transition-all text-xs font-medium"
               >
-                <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-brand" />
+                <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-brand group-hover:text-white transition-colors" />
                 <span>Admin</span>
               </Button>
             </div>

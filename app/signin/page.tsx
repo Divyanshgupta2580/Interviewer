@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Brain, ArrowRight, GraduationCap, ShieldCheck, Loader2 } from 'lucide-react';
+import { Brain, ArrowRight, GraduationCap, ShieldCheck, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ export default function SignInPage() {
   const { signIn, signInDemo, isLoading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -106,15 +107,30 @@ export default function SignInPage() {
               <Label htmlFor="password" className="text-sm font-medium">
                 Password
               </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                className="h-10 transition-shadow duration-200 focus:shadow-[0_0_0_3px_hsl(var(--brand)/0.12)]"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  className="h-10 pr-10 transition-shadow duration-200 focus:shadow-[0_0_0_3px_hsl(var(--brand)/0.12)]"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -148,22 +164,24 @@ export default function SignInPage() {
           {/* Quick Access buttons */}
           <div className="grid grid-cols-2 gap-3">
             <Button
+              type="button"
               variant="outline"
               onClick={() => handleDemoSignIn('student')}
               disabled={isLoading}
-              className="group h-10 border-border/60 hover:border-brand/40 hover:bg-brand/5"
+              className="group h-10 border-border text-foreground hover:border-brand hover:bg-brand hover:text-white transition-all"
             >
-              <GraduationCap className="mr-1.5 h-4 w-4 text-muted-foreground group-hover:text-brand transition-colors" />
-              <span className="text-sm">Student</span>
+              <GraduationCap className="mr-1.5 h-4 w-4 text-brand group-hover:text-white transition-colors" />
+              <span className="text-sm font-medium">Student</span>
             </Button>
             <Button
+              type="button"
               variant="outline"
               onClick={() => handleDemoSignIn('admin')}
               disabled={isLoading}
-              className="group h-10 border-border/60 hover:border-brand/40 hover:bg-brand/5"
+              className="group h-10 border-border text-foreground hover:border-brand hover:bg-brand hover:text-white transition-all"
             >
-              <ShieldCheck className="mr-1.5 h-4 w-4 text-muted-foreground group-hover:text-brand transition-colors" />
-              <span className="text-sm">Admin</span>
+              <ShieldCheck className="mr-1.5 h-4 w-4 text-brand group-hover:text-white transition-colors" />
+              <span className="text-sm font-medium">Admin</span>
             </Button>
           </div>
         </div>
