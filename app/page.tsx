@@ -455,9 +455,15 @@ function CtaSection() {
 export default function Home() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const signOut = useAuthStore((s) => s.signOut);
   const openAuthModal = useAuthModalStore((s) => s.open);
   const navRef = useRef<HTMLElement>(null);
+
+  // If user is already signed in, they can never visit or view the landing page
+  useEffect(() => {
+    if (user) {
+      router.replace(user.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+    }
+  }, [user, router]);
 
   const handleGetStarted = () => {
     openAuthModal('/interview/configure');
@@ -480,6 +486,10 @@ export default function Home() {
     return () => trigger.kill();
   }, []);
 
+  if (user) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -493,48 +503,18 @@ export default function Home() {
             <span className="text-lg font-semibold tracking-tight">MSOT</span>
           </div>
           <div className="flex items-center gap-2">
-            {user ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="border border-transparent text-muted-foreground hover:border-white hover:bg-black hover:text-white transition-all duration-200"
-                  onClick={() => router.push(user.role === 'admin' ? '/admin/dashboard' : '/dashboard')}
-                >
-                  Dashboard
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-border/70 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
-                  onClick={async () => {
-                    await signOut();
-                    toast.success('Signed out successfully');
-                  }}
-                >
-                  Sign Out
-                </Button>
-                <Button variant="brand" size="sm" className="group" onClick={handleGetStarted}>
-                  Get Started
-                  <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="border border-transparent text-muted-foreground hover:border-white hover:bg-black hover:text-white transition-all duration-200"
-                  onClick={handleSignIn}
-                >
-                  Sign In
-                </Button>
-                <Button variant="brand" size="sm" className="group" onClick={handleGetStarted}>
-                  Get Started
-                  <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                </Button>
-              </>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="border border-transparent text-muted-foreground hover:border-white hover:bg-black hover:text-white transition-all duration-200"
+              onClick={handleSignIn}
+            >
+              Sign In
+            </Button>
+            <Button variant="brand" size="sm" className="group" onClick={handleGetStarted}>
+              Get Started
+              <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Button>
           </div>
         </div>
       </header>

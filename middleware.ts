@@ -36,8 +36,9 @@ export async function middleware(request: NextRequest) {
   const isStudentPath = PROTECTED_STUDENT_PATHS.some((p) => pathname.startsWith(p));
   const isAdminPath = PROTECTED_ADMIN_PATHS.some((p) => pathname.startsWith(p));
   const isAuthPage = pathname === '/signin' || pathname === '/signup';
+  const isLandingPage = pathname === '/';
 
-  if (!isStudentPath && !isAdminPath && !isAuthPage) {
+  if (!isStudentPath && !isAdminPath && !isAuthPage && !isLandingPage) {
     return NextResponse.next();
   }
 
@@ -62,7 +63,8 @@ export async function middleware(request: NextRequest) {
   const demoSession = request.cookies.get('demo-session')?.value;
   const isDemoAuthenticated = demoSession === 'student' || demoSession === 'admin';
 
-  if (isAuthPage && (isAuthenticated || isDemoAuthenticated)) {
+  // Redirect authenticated users away from auth pages AND the landing page
+  if ((isAuthPage || isLandingPage) && (isAuthenticated || isDemoAuthenticated)) {
     const dest = demoSession === 'admin' ? '/admin/dashboard' : '/dashboard';
     return NextResponse.redirect(new URL(dest, request.url));
   }
