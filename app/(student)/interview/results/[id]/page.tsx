@@ -179,7 +179,7 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
               <span className="mt-2 text-xs text-muted-foreground uppercase tracking-wide">Overall Score</span>
             </div>
             <div className="flex-1 md:ml-8">
-              <div className="text-xs font-medium text-brand uppercase tracking-wide mb-2">Demonstration Feedback</div>
+              <div className="text-xs font-medium text-brand uppercase tracking-wide mb-2">Interview Evaluation &amp; Feedback</div>
               <p className="text-sm text-muted-foreground leading-relaxed">{feedback.summary}</p>
             </div>
           </div>

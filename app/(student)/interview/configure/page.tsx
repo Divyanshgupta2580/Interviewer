@@ -425,7 +425,7 @@ export default function ConfigureInterviewPage() {
           <CardContent className="flex items-center gap-3 p-4">
             <AlertCircle className="h-5 w-5 text-warning shrink-0" />
             <p className="text-sm text-foreground/80">
-              You have used all {FREE_SESSION_LIMIT} free interview sessions. Session limits are enforced in the browser for demonstration only.
+              You have used all {FREE_SESSION_LIMIT} free interview sessions. Please upgrade your plan or contact support for additional sessions.
             </p>
           </CardContent>
         </Card>

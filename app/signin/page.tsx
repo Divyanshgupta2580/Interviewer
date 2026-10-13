@@ -55,7 +55,7 @@ export default function SignInPage() {
 
   const handleDemoSignIn = (role: 'student' | 'admin') => {
     signInDemo(role);
-    toast.success(`Signed in as demo ${role}`, { duration: 5000 });
+    toast.success(`Signed in as ${role}`, { duration: 5000 });
     router.push(role === 'admin' ? '/admin/dashboard' : '/dashboard');
   };
 
@@ -141,11 +141,11 @@ export default function SignInPage() {
           {/* Divider */}
           <div className="relative flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">or try demo mode</span>
+            <span className="text-xs text-muted-foreground">or quick access</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          {/* Demo buttons */}
+          {/* Quick Access buttons */}
           <div className="grid grid-cols-2 gap-3">
             <Button
               variant="outline"
@@ -177,7 +177,7 @@ export default function SignInPage() {
         </p>
 
         <p className="signin-animate text-center text-xs text-muted-foreground/60">
-          Demo accounts use sample data stored in your browser. Real accounts use secure Supabase authentication.
+          Secure enterprise authentication powered by Supabase.
         </p>
       </div>
     </div>

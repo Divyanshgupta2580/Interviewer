@@ -40,7 +40,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
     .map((n) => n[0])
     .join('')
     .toUpperCase()
-    .slice(0, 2) || 'DS';
+    .slice(0, 2) || 'ST';
 
   const handleSignOut = async () => {
     await signOut();
@@ -61,12 +61,12 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
 
   const AccountFooter = ({ onNavigate }: { onNavigate?: () => void }) => (
     <div className="border-t border-border p-4">
-      <div className="mb-3 flex items-center gap-2 px-1" title={user?.displayName || 'Demo Student'}>
+      <div className="mb-3 flex items-center gap-2 px-1" title={user?.displayName || 'Student'}>
         <Avatar className="h-8 w-8 shrink-0">
           <AvatarFallback className="bg-muted text-xs font-medium">{initials}</AvatarFallback>
         </Avatar>
         <span className="min-w-0 truncate text-sm font-medium text-foreground">
-          {user?.displayName || 'Demo Student'}
+          {user?.displayName || 'Student'}
         </span>
       </div>
       <Button

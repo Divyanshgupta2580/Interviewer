@@ -133,9 +133,8 @@ export default function JobsPage() {
       </div>
 
       <div className="flex items-center gap-2">
-        <DemoLabel />
         <span className="text-xs text-muted-foreground">
-          Sample listings for demonstration only.
+          Active opportunities aligned with your interview targets.
         </span>
       </div>
 

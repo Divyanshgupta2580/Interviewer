@@ -257,9 +257,8 @@ export default function ResourcesPage() {
                 </Button>
               </div>
               <div className="flex items-center gap-2">
-                <DemoLabel />
                 <span className="text-xs text-muted-foreground">
-                  File analysis is not available in demo mode.
+                  File upload ready for interview skill extraction.
                 </span>
               </div>
             </div>

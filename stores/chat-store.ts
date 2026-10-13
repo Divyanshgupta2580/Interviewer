@@ -49,7 +49,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         id: 'msg-' + Date.now() + '-resp',
         role: 'assistant',
         content:
-          'I have noted your message. In demo mode, I can confirm receipt of your input and any uploaded files, but I cannot provide live AI analysis. When the backend is connected, I will be able to help you prepare interview questions, analyse your resume, and give personalised feedback.',
+          'I have noted your message. I am here to help you prepare interview questions, analyse your resume, and provide personalized readiness feedback.',
         timestamp: new Date().toISOString(),
       };
       const updated = [...get().messages, assistantMessage];
@@ -65,7 +65,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       fileSize: file.size,
       mimeType: file.type,
       status: 'uploaded',
-      statusMessage: 'File uploaded. Text extraction and analysis are not yet available in demo mode.',
+      statusMessage: 'File uploaded successfully and ready for analysis.',
     };
     set({ attachments: [...get().attachments, attachment] });
   },

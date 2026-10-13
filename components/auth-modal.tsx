@@ -68,7 +68,7 @@ export function AuthModal() {
   const handleDemoSignIn = (role: 'student' | 'admin') => {
     clearError();
     signInDemo(role);
-    toast.success(`Signed in as demo ${role}`, { duration: 5000 });
+    toast.success(`Signed in as ${role}`, { duration: 5000 });
     close();
     const target = role === 'admin' ? '/admin/dashboard' : (redirectUrl || '/dashboard');
     router.push(target);
@@ -76,7 +76,7 @@ export function AuthModal() {
 
   const handleSignOutAndReset = async () => {
     await signOut();
-    toast.success('Signed out. Please sign in with your credentials or demo mode.', { duration: 4000 });
+    toast.success('Signed out. Please sign in with your credentials.', { duration: 4000 });
   };
 
   return (
@@ -254,11 +254,11 @@ export function AuthModal() {
             {/* Divider */}
             <div className="relative my-4 flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
-              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">or try demo mode</span>
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">or quick access</span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            {/* Demo Mode Action Buttons */}
+            {/* Quick Access Action Buttons */}
             <div className="grid grid-cols-2 gap-2.5">
               <Button
                 type="button"
@@ -269,7 +269,7 @@ export function AuthModal() {
                 className="h-9 border-border/80 hover:border-brand/40 hover:bg-brand/5 transition-all text-xs"
               >
                 <GraduationCap className="mr-1.5 h-3.5 w-3.5 text-brand" />
-                <span>Demo Student</span>
+                <span>Student</span>
               </Button>
               <Button
                 type="button"
@@ -280,7 +280,7 @@ export function AuthModal() {
                 className="h-9 border-border/80 hover:border-brand/40 hover:bg-brand/5 transition-all text-xs"
               >
                 <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-brand" />
-                <span>Demo Admin</span>
+                <span>Admin</span>
               </Button>
             </div>
           </>

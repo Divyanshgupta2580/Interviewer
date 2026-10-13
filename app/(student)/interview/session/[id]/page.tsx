@@ -583,7 +583,7 @@ function DemoInterviewView({ id }: { id: string }) {
           </div>
 
           <div className="space-y-2">
-            <div className="text-xs font-medium text-brand uppercase tracking-wide">Sample Question — Demonstration</div>
+            <div className="text-xs font-medium text-brand uppercase tracking-wide">Interview Question</div>
             <h2 className="text-xl font-medium leading-snug">{currentQuestion.questionText}</h2>
             {currentQuestion.expectedConcepts && currentQuestion.expectedConcepts.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">

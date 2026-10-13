@@ -534,7 +534,7 @@ export default function Home() {
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Demo Mode &mdash; Sample data for demonstration purposes only.
+            &copy; {new Date().getFullYear()} MSOT. All rights reserved.
           </p>
         </div>
       </footer>
