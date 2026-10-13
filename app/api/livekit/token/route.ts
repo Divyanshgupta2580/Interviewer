@@ -17,6 +17,8 @@ import { createServerClient } from '@/lib/supabase-server';
  *   - Pass this token to your LiveKit component on the frontend:
  *       <LiveKitRoom token={token} serverUrl={livekitUrl} ... />
  */
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     // ── 1. Validate server environment ────────────────────────────────────
