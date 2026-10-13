@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { OnboardingTrigger } from '@/components/onboarding-trigger';
 import { supabase } from '@/lib/supabase-client';
 import type { LiveKitResultsPayload, LiveKitCategoryScore } from '@/types';
+import { normalizeInterviewResult } from '@/lib/interview-result-adapter';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -62,7 +63,7 @@ export default function DashboardPage() {
             id: data.id,
             targetRole: data.target_role,
             completedAt: data.completed_at,
-            result: data.result as LiveKitResultsPayload,
+            result: normalizeInterviewResult(data.result),
           });
         }
       });

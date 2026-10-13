@@ -40,6 +40,7 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import type { LiveKitResultsPayload } from '@/types';
+import { normalizeInterviewResult } from '@/lib/interview-result-adapter';
 
 export default function ResultsPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -81,7 +82,7 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
         .maybeSingle();
 
       if (data?.result) {
-        setLiveKitResults(data.result as LiveKitResultsPayload);
+        setLiveKitResults(normalizeInterviewResult(data.result));
         setLiveKitLoading(false);
         return true;
       }

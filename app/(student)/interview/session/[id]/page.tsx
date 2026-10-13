@@ -42,6 +42,7 @@ import type {
   LiveKitResultsPayload,
   LiveKitErrorPayload,
 } from '@/types';
+import { normalizeInterviewResult } from '@/lib/interview-result-adapter';
 
 export default function InterviewSessionPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -112,7 +113,7 @@ export default function InterviewSessionPage({ params }: { params: { id: string 
           .maybeSingle();
 
         if (data?.result) {
-          liveKitStore.setResults(data.result as LiveKitResultsPayload);
+          liveKitStore.setResults(normalizeInterviewResult(data.result));
           await livekit.disconnect();
           toast.success('Results loaded from database!');
           router.push(`/interview/results/${id}`);

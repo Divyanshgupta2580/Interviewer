@@ -50,21 +50,42 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-import httpx
-from livekit import agents, rtc
-from livekit.agents import (
-    Agent,
-    AgentSession,
-    JobContext,
-    JobProcess,
-    WorkerOptions,
-    WorkerType,
-    RoomOutputOptions,
-)
-from livekit.agents.llm import LLM, ChatContext, ChatMessage
-from livekit.agents.stt import STT
-from livekit.agents.tts import TTS
-from livekit.plugins import openai as lk_openai
+try:
+    import httpx
+except ImportError:
+    httpx = None  # type: ignore
+
+try:
+    from livekit import agents, rtc
+    from livekit.agents import (
+        Agent,
+        AgentSession,
+        JobContext,
+        JobProcess,
+        WorkerOptions,
+        WorkerType,
+        RoomOutputOptions,
+    )
+    from livekit.agents.llm import LLM, ChatContext, ChatMessage
+    from livekit.agents.stt import STT
+    from livekit.agents.tts import TTS
+    from livekit.plugins import openai as lk_openai
+except ImportError:
+    agents = None  # type: ignore
+    rtc = None  # type: ignore
+    Agent = object  # type: ignore
+    AgentSession = None  # type: ignore
+    JobContext = None  # type: ignore
+    JobProcess = None  # type: ignore
+    WorkerOptions = None  # type: ignore
+    WorkerType = None  # type: ignore
+    RoomOutputOptions = None  # type: ignore
+    LLM = None  # type: ignore
+    ChatContext = None  # type: ignore
+    ChatMessage = None  # type: ignore
+    STT = None  # type: ignore
+    TTS = None  # type: ignore
+    lk_openai = None  # type: ignore
 
 # ---------------------------------------------------------------------------
 # Logging — sanitized (no PII, no tokens, no API keys)
@@ -293,10 +314,10 @@ def build_system_prompt(ctx: InterviewContext, question_number: int, total_quest
 def build_scoring_prompt(ctx: InterviewContext, transcript: list[TranscriptEntry]) -> str:
     """Build the prompt for final scoring via Groq."""
     transcript_text = "\n".join(
-        f"[{t.speaker}] {t.text}" for t in transcript
+        f"[{t.speaker}] ({int(round(t.timestamp))}s): {t.text}" for t in transcript
     )
 
-    return f"""You are an expert interview evaluator. Analyze this mock interview transcript and produce a JSON result.
+    return f"""You are an expert interview evaluator. Analyze this mock interview transcript and produce a JSON evaluation.
 
 Interview context:
 - Role: {ctx.target_role}
@@ -308,36 +329,56 @@ Interview context:
 Transcript:
 {transcript_text}
 
-Produce a JSON object with EXACTLY this structure (no markdown, no explanation — just JSON):
+Produce a JSON object with EXACTLY this structure (no markdown, no extra explanation — valid JSON only):
 {{
-  "overallReadinessDelta": <integer, -10 to +10>,
-  "finalScore": <integer, 0-100>,
-  "summary": "<2-3 sentence overall feedback>",
+  "interview_score": <number between 0.0 and 100.0, e.g. 78.5>,
+  "summary": "<2-3 sentence overall feedback summary>",
+  "overallReadinessDelta": <integer between -10 and +10>,
+  "dimensions": {{
+    "technical_depth": {{
+      "score": <number 0-100>,
+      "feedback": "<detailed feedback on technical depth>",
+      "strengths": ["<strength 1>", "<strength 2>"],
+      "improvement_areas": ["<area 1>", "<area 2>"]
+    }},
+    "communication": {{
+      "score": <number 0-100>,
+      "feedback": "<detailed feedback on communication>",
+      "strengths": ["<strength 1>"],
+      "improvement_areas": ["<area 1>"]
+    }},
+    "behavioral": {{
+      "score": <number 0-100>,
+      "feedback": "<detailed feedback on problem solving and behavioral>",
+      "strengths": ["<strength 1>"],
+      "improvement_areas": ["<area 1>"]
+    }}
+  }},
   "categoryScores": [
     {{
       "category": "Technical depth",
-      "score": <0-100>,
+      "score": <number 0-100>,
       "benchmark": {ctx.job_threshold_score},
-      "strengths": ["...", "..."],
-      "critiques": ["...", "..."]
+      "strengths": ["..."],
+      "critiques": ["..."]
     }},
     {{
       "category": "Communication clarity",
-      "score": <0-100>,
+      "score": <number 0-100>,
       "benchmark": {ctx.job_threshold_score},
       "strengths": ["..."],
       "critiques": ["..."]
     }},
     {{
       "category": "Problem-solving approach",
-      "score": <0-100>,
+      "score": <number 0-100>,
       "benchmark": {ctx.job_threshold_score},
       "strengths": ["..."],
       "critiques": ["..."]
     }},
     {{
       "category": "Resume alignment",
-      "score": <0-100>,
+      "score": <number 0-100>,
       "benchmark": {ctx.job_threshold_score},
       "strengths": ["..."],
       "critiques": ["..."]
@@ -347,79 +388,164 @@ Produce a JSON object with EXACTLY this structure (no markdown, no explanation �
     {{
       "title": "<short title>",
       "location": "resume" | "answers" | "communication",
-      "recommendedChange": "<specific actionable recommendation>"
+      "recommendedChange": "<actionable recommendation>"
     }}
   ]
 }}"""
 
 
-def parse_scoring_response(raw: str) -> InterviewResults:
-    """Parse the LLM scoring response into InterviewResults."""
-    # Strip markdown code fences if present
+def parse_scoring_response_raw(raw: str) -> dict[str, Any]:
+    """Parse raw LLM string into JSON dictionary, handling optional markdown code fences."""
     text = raw.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[1] if "\n" in text else text[3:]
     if text.endswith("```"):
         text = text[:-3]
     text = text.strip()
-
-    data = json.loads(text)
-
-    category_scores = [
-        CategoryScore(
-            category=cs["category"],
-            score=int(cs["score"]),
-            benchmark=int(cs.get("benchmark", 70)),
-            strengths=cs.get("strengths", []),
-            critiques=cs.get("critiques", []),
-        )
-        for cs in data.get("categoryScores", [])
-    ]
-
-    suggested_fixes = [
-        SuggestedFix(
-            title=sf["title"],
-            location=sf.get("location", "answers"),
-            recommended_change=sf.get("recommendedChange", ""),
-        )
-        for sf in data.get("suggestedFixes", [])
-    ]
-
-    return InterviewResults(
-        overall_readiness_delta=int(data.get("overallReadinessDelta", 0)),
-        final_score=int(data.get("finalScore", 0)),
-        summary=data.get("summary", ""),
-        category_scores=category_scores,
-        suggested_fixes=suggested_fixes,
-        timestamp=int(time.time() * 1000),
-    )
+    return json.loads(text)
 
 
-def results_to_dict(results: InterviewResults) -> dict[str, Any]:
-    """Convert InterviewResults to the dict format the frontend expects."""
+def build_canonical_v0_result(
+    data: dict[str, Any],
+    transcript: list[TranscriptEntry],
+) -> dict[str, Any]:
+    """Build the canonical v0-compatible payload for interview_sessions.result."""
+    # Convert transcript entries to canonical v0 schema:
+    # speaker: "ai" | "student", timestamp_sec: integer seconds
+    canonical_transcript = []
+    for entry in transcript:
+        speaker_val = "ai" if entry.speaker in ("interviewer", "ai") else "student"
+        sec = max(0, int(round(entry.timestamp)))
+        canonical_transcript.append({
+            "speaker": speaker_val,
+            "timestamp_sec": sec,
+            "text": entry.text,
+        })
+
+    # Validate and normalize interview_score (0.0 to 100.0, decimal valid)
+    score_val = data.get("interview_score")
+    if score_val is None:
+        score_val = data.get("finalScore", 70.0)
+    try:
+        score_val = round(float(score_val), 1)
+        score_val = max(0.0, min(100.0, score_val))
+    except (ValueError, TypeError):
+        score_val = 70.0
+
+    raw_dims = data.get("dimensions", {})
+    dimensions: dict[str, dict[str, Any]] = {}
+    for dim_key in ("technical_depth", "communication", "behavioral"):
+        raw_dim = raw_dims.get(dim_key, {})
+        try:
+            dim_score = round(float(raw_dim.get("score", score_val)), 1)
+            dim_score = max(0.0, min(100.0, dim_score))
+        except (ValueError, TypeError):
+            dim_score = score_val
+
+        dimensions[dim_key] = {
+            "score": dim_score,
+            "feedback": str(raw_dim.get("feedback", f"Performance evaluated for {dim_key.replace('_', ' ')}.")),
+            "strengths": list(raw_dim.get("strengths", [])),
+            "improvement_areas": list(raw_dim.get("improvement_areas", [])),
+        }
+
     return {
-        "overallReadinessDelta": results.overall_readiness_delta,
-        "finalScore": results.final_score,
-        "summary": results.summary,
-        "categoryScores": [
-            {
-                "category": cs.category,
-                "score": cs.score,
-                "benchmark": cs.benchmark,
-                "strengths": cs.strengths,
-                "critiques": cs.critiques,
-            }
-            for cs in results.category_scores
-        ],
-        "suggestedFixes": [
-            {
-                "title": sf.title,
-                "location": sf.location,
-                "recommendedChange": sf.recommended_change,
-            }
-            for sf in results.suggested_fixes
-        ],
-        "timestamp": results.timestamp,
+        "contract_version": "v0",
+        "interview_score": score_val,
+        "transcript": canonical_transcript,
+        "summary": str(data.get("summary", "Mock interview completed.")),
+        "dimensions": dimensions,
+    }
+
+
+def validate_canonical_v0_result(payload: dict[str, Any]) -> tuple[bool, str]:
+    """Validate that the payload conforms strictly to the canonical v0 schema."""
+    if not isinstance(payload, dict):
+        return False, "Payload must be a dictionary"
+    if payload.get("contract_version") != "v0":
+        return False, f"contract_version must be 'v0', got {payload.get('contract_version')}"
+    score = payload.get("interview_score")
+    if not isinstance(score, (int, float)):
+        return False, f"interview_score must be a number, got {type(score)}"
+    if score < 0 or score > 100:
+        return False, f"interview_score must be between 0 and 100, got {score}"
+    if not isinstance(payload.get("summary"), str):
+        return False, "summary must be a string"
+    if not isinstance(payload.get("transcript"), list):
+        return False, "transcript must be a list"
+    for idx, entry in enumerate(payload["transcript"]):
+        if not isinstance(entry, dict):
+            return False, f"transcript[{idx}] must be a dict"
+        if entry.get("speaker") not in ("ai", "student"):
+            return False, f"transcript[{idx}].speaker must be 'ai' or 'student', got {entry.get('speaker')}"
+        if not isinstance(entry.get("timestamp_sec"), (int, float)):
+            return False, f"transcript[{idx}].timestamp_sec must be numeric"
+        if not isinstance(entry.get("text"), str):
+            return False, f"transcript[{idx}].text must be a string"
+    dims = payload.get("dimensions")
+    if not isinstance(dims, dict):
+        return False, "dimensions must be a dictionary"
+    for dim_name in ("technical_depth", "communication", "behavioral"):
+        if dim_name not in dims:
+            return False, f"dimensions must contain '{dim_name}'"
+        dim = dims[dim_name]
+        if not isinstance(dim, dict):
+            return False, f"dimensions.{dim_name} must be a dict"
+        if not isinstance(dim.get("score"), (int, float)):
+            return False, f"dimensions.{dim_name}.score must be numeric"
+        if not isinstance(dim.get("feedback"), str):
+            return False, f"dimensions.{dim_name}.feedback must be a string"
+        if not isinstance(dim.get("strengths"), list):
+            return False, f"dimensions.{dim_name}.strengths must be a list"
+        if not isinstance(dim.get("improvement_areas"), list):
+            return False, f"dimensions.{dim_name}.improvement_areas must be a list"
+    return True, ""
+
+
+def build_frontend_results_event(
+    data: dict[str, Any],
+    canonical_v0: dict[str, Any],
+) -> dict[str, Any]:
+    """Build the interview:results event payload for frontend data channel."""
+    final_score = canonical_v0["interview_score"]
+    delta = int(data.get("overallReadinessDelta", 0))
+    summary = canonical_v0["summary"]
+
+    cat_scores = []
+    if data.get("categoryScores"):
+        for cs in data["categoryScores"]:
+            cat_scores.append({
+                "category": str(cs.get("category", "")),
+                "score": float(cs.get("score", final_score)),
+                "benchmark": int(cs.get("benchmark", 70)),
+                "strengths": list(cs.get("strengths", [])),
+                "critiques": list(cs.get("critiques", [])),
+            })
+    else:
+        for dim_name, dim_data in canonical_v0["dimensions"].items():
+            cat_scores.append({
+                "category": dim_name.replace("_", " ").title(),
+                "score": dim_data["score"],
+                "benchmark": 70,
+                "strengths": dim_data["strengths"],
+                "critiques": dim_data["improvement_areas"],
+            })
+
+    suggested_fixes = []
+    for sf in data.get("suggestedFixes", []):
+        suggested_fixes.append({
+            "title": str(sf.get("title", "Review feedback")),
+            "location": str(sf.get("location", "answers")),
+            "recommendedChange": str(sf.get("recommendedChange", "")),
+        })
+
+    return {
+        "overallReadinessDelta": delta,
+        "finalScore": final_score,
+        "summary": summary,
+        "categoryScores": cat_scores,
+        "suggestedFixes": suggested_fixes,
+        "timestamp": int(time.time() * 1000),
     }
 
 
@@ -430,26 +556,27 @@ def results_to_dict(results: InterviewResults) -> dict[str, Any]:
 
 async def persist_results_to_supabase(
     interview_id: str,
-    results_dict: dict[str, Any],
+    canonical_v0_result: dict[str, Any],
 ) -> bool:
     """Persist results to the interview_sessions table.
 
-    Uses the Supabase service role key to bypass RLS (the worker is a trusted
-    backend service, not a user client).
-
-    Returns True on success, False on failure.
+    Uses the Supabase service role key to bypass RLS.
+    Updates:
+      result: canonical v0 JSONB
+      status: 'completed'
+      completed_at: ISO8601 UTC timestamp
     """
     supabase_url = os.environ.get("SUPABASE_URL", "")
     service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
     if not supabase_url or not service_key:
-        logger.error("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set — cannot persist results")
+        logger.error("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured in environment")
         return False
 
     url = f"{supabase_url}/rest/v1/interview_sessions?id=eq.{interview_id}"
 
     payload = {
-        "result": results_dict,
+        "result": canonical_v0_result,
         "status": "completed",
         "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
@@ -465,17 +592,16 @@ async def persist_results_to_supabase(
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.patch(url, json=payload, headers=headers)
             if resp.status_code in (200, 204):
-                logger.info("Results persisted to interview_sessions (id=%s)", interview_id)
+                logger.info("Canonical v0 results persisted to interview_sessions (id=%s)", interview_id)
                 return True
             else:
                 logger.error(
-                    "Supabase persist failed: status=%d body=%s",
+                    "Supabase persist failed: status=%d (sanitized response)",
                     resp.status_code,
-                    resp.text[:200],
                 )
                 return False
     except Exception as e:
-        logger.error("Supabase persist exception: %s", e)
+        logger.error("Supabase persist exception: %s", type(e).__name__)
         return False
 
 
@@ -497,6 +623,8 @@ class MockInterviewAgent(Agent):
         self.finish_requested = False
         self.start_time = time.time()
         self._finish_event = asyncio.Event()
+        self._finish_lock = asyncio.Lock()
+        self._has_finished = False
 
     async def on_enter(self) -> None:
         """Called when the agent enters the LiveKit room."""
@@ -548,12 +676,7 @@ class MockInterviewAgent(Agent):
         q_num = self.question_count + 1
         self.set_instructions(build_system_prompt(self.ctx, q_num, MAX_QUESTIONS))
 
-        # The agent will generate speech based on the system prompt.
-        # We send a data message so the frontend can display the question text.
         question_id = f"q_{q_num}_{uuid.uuid4().hex[:6]}"
-
-        # Generate question text via LLM (simplified — the agent's speech IS the question)
-        # In production, you'd generate the question text and send it as data
         question_text = await self._generate_question_text(q_num)
 
         await send_data_message(
@@ -620,42 +743,80 @@ Question:"""
 
     async def _finish_interview(self) -> None:
         """Finalize transcript, generate scoring, persist to DB, and publish interview:results."""
-        if getattr(self, "_is_finishing", False):
-            return
-        self._is_finishing = True
-        self.finish_requested = True
-        logger.info("Finishing interview: interviewId=%s", self.ctx.interview_id)
+        async with self._finish_lock:
+            if self._has_finished:
+                logger.info("Interview already finalized or in progress, skipping duplicate call.")
+                return
+            self._has_finished = True
+            self.finish_requested = True
+            logger.info("Finishing interview: interviewId=%s", self.ctx.interview_id)
 
-        try:
-            # 1. Finalize transcript and generate results via Groq
-            results = await self._generate_results()
-            results_dict = results_to_dict(results)
+            try:
+                # 1. Finalize transcript and generate results via Groq
+                raw_scoring = await self._generate_results_raw()
+                canonical_v0 = build_canonical_v0_result(raw_scoring, self.transcript)
 
-            # 2. Persist to Supabase interview_sessions FIRST
-            persisted = await persist_results_to_supabase(self.ctx.interview_id, results_dict)
-            if not persisted:
-                logger.warning("Supabase persist attempt 1 failed, retrying...")
-                await asyncio.sleep(1)
-                persisted = await persist_results_to_supabase(self.ctx.interview_id, results_dict)
+                # 2. Validate canonical v0 schema
+                valid, err_msg = validate_canonical_v0_result(canonical_v0)
+                if not valid:
+                    logger.error("Canonical v0 schema validation failed: %s", err_msg)
+                    raise ValueError(f"Canonical v0 schema validation failed: {err_msg}")
 
-            # 3. Publish interview:results ONLY after persistence succeeds
-            await send_data_message(self.room, "interview:results", results_dict)
-            logger.info("Sent interview:results event after DB persistence (finalScore=%d)", results.final_score)
+                frontend_event = build_frontend_results_event(raw_scoring, canonical_v0)
 
-        except Exception as e:
-            logger.error("Failed to generate/send results: %s", e)
-            await send_data_message(
-                self.room,
-                "interview:error",
-                {"code": "RESULT_ERROR", "message": f"Failed to generate results: {e}"},
-            )
+                # 3. Persist to Supabase interview_sessions FIRST
+                persisted = False
+                for attempt in range(1, 4):
+                    persisted = await persist_results_to_supabase(self.ctx.interview_id, canonical_v0)
+                    if persisted:
+                        break
+                    logger.warning("Supabase persist attempt %d failed, retrying in %ds...", attempt, attempt)
+                    await asyncio.sleep(attempt)
 
-        # 4. Disconnect from room
-        await self.room.disconnect()
-        logger.info("Interview complete, room disconnected: interviewId=%s", self.ctx.interview_id)
+                if not persisted:
+                    # If persistence fails after retry:
+                    # - do not publish a success result;
+                    # - publish interview:error;
+                    # - log a sanitized error;
+                    # - keep the failure observable.
+                    logger.error("Persistence failed after all retries for interviewId=%s", self.ctx.interview_id)
+                    await send_data_message(
+                        self.room,
+                        "interview:error",
+                        {
+                            "code": "PERSISTENCE_FAILED",
+                            "message": "Failed to persist interview results to database after retries",
+                        },
+                    )
+                    return
 
-    async def _generate_results(self) -> InterviewResults:
-        """Call Groq to generate the final interview results."""
+                # 4. Publish interview:results ONLY after persistence succeeds
+                await send_data_message(self.room, "interview:results", frontend_event)
+                logger.info(
+                    "Sent interview:results event after DB persistence (finalScore=%s)",
+                    canonical_v0["interview_score"],
+                )
+
+            except Exception as e:
+                logger.error("Failed to generate/persist results: %s", e)
+                try:
+                    await send_data_message(
+                        self.room,
+                        "interview:error",
+                        {"code": "RESULT_ERROR", "message": "Failed to generate or persist interview results"},
+                    )
+                except Exception as send_err:
+                    logger.error("Failed to send interview:error message: %s", send_err)
+            finally:
+                # 5. Disconnect from room after finalization concludes
+                try:
+                    await self.room.disconnect()
+                except Exception as disc_err:
+                    logger.warning("Room disconnect warning: %s", disc_err)
+                logger.info("Interview complete, room disconnected: interviewId=%s", self.ctx.interview_id)
+
+    async def _generate_results_raw(self) -> dict[str, Any]:
+        """Call Groq to generate the raw scoring dictionary."""
         from livekit.plugins.groq import LLM as GroqLLM
 
         llm = GroqLLM(
@@ -674,7 +835,7 @@ Question:"""
                 raw += chunk.delta.content if hasattr(chunk.delta, "content") else str(chunk.delta)
 
         logger.info("Scoring LLM response received: %d chars", len(raw))
-        return parse_scoring_response(raw)
+        return parse_scoring_response_raw(raw)
 
     async def handle_finish_message(self, payload: dict[str, Any]) -> None:
         """Called when the frontend sends interview:finish."""
@@ -787,10 +948,11 @@ def main() -> None:
         "LIVEKIT_API_SECRET",
         "SUPABASE_URL",
         "SUPABASE_SERVICE_ROLE_KEY",
-        "OPENAI_API_KEY",
         "GROQ_API_KEY",
     ]
     missing = [v for v in required if not os.environ.get(v)]
+    if not os.environ.get("OPENAI_API_KEY") and not os.environ.get("DEEPGRAM_API_KEY"):
+        missing.append("OPENAI_API_KEY or DEEPGRAM_API_KEY")
     if missing:
         logger.error("Missing required environment variables: %s", ", ".join(missing))
         raise SystemExit(1)
