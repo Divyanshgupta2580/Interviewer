@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAuthModalStore } from '@/stores/auth-modal-store';
 import { toast } from 'sonner';
-import { Brain, ArrowRight, GraduationCap, ShieldCheck, Loader2, Lock, UserPlus, LogOut, Eye, EyeOff } from 'lucide-react';
+import { Brain, ArrowRight, GraduationCap, ShieldCheck, Loader2, UserPlus, LogOut, Eye, EyeOff } from 'lucide-react';
 
 export function AuthModal() {
   const router = useRouter();
@@ -302,11 +302,6 @@ export function AuthModal() {
             </div>
           </>
         )}
-
-        <p className="mt-4 text-center text-[10px] text-muted-foreground/75">
-          <Lock className="inline-block mr-1 h-2.5 w-2.5" />
-          Authentication is strictly required before accessing AI mock interview sessions.
-        </p>
       </DialogContent>
     </Dialog>
   );

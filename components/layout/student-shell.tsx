@@ -12,7 +12,6 @@ import {
   FileText,
   LogOut,
   Menu,
-  ChevronLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -144,7 +143,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
             onClick={() => setSidebarCollapsed((prev) => !prev)}
             className={cn(
               'group flex w-full items-center rounded-xl p-2 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              sidebarCollapsed ? 'justify-center' : 'justify-between'
+              sidebarCollapsed ? 'justify-center' : 'justify-start'
             )}
             aria-label={sidebarCollapsed ? 'Expand navigation bar' : 'Close navigation bar'}
             title={sidebarCollapsed ? 'Expand navigation bar' : 'Close navigation bar'}
@@ -159,11 +158,6 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
                 </span>
               )}
             </div>
-            {!sidebarCollapsed && (
-              <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted">
-                <ChevronLeft className="h-4 w-4" />
-              </span>
-            )}
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-3">
